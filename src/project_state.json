@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 9,
+  "summary": "BRAINOPHARM project: web app with authentication and a Drug Interaction section; user requests making the Drug-Drug Interaction workflow functional with multi-drug input and AI-powered interaction/safety results.",
+  "architectural_notes": [
+    "Drug-drug interaction results should be generated via external LLM services (e.g., ChatGPT and/or Perplexity) and returned as structured safety/interaction output for multiple entered drugs.",
+    "If backend interaction data is missing/empty, call external LLM services (ChatGPT/Perplexity) to generate structured interaction/safety content so the UI does not render blank or all 'Not Available' fields."
+  ],
+  "known_issues": [
+    "Drug Interaction tab / 'Check Interactions' flow currently not working as expected (user cannot add multiple drugs and get interaction details).",
+    "When entering 3 drug names, interaction results render with all fields as 'Not Available' instead of populated interaction details.",
+    "Regression: Drug Interaction results now show almost nothing/blank in the UI; previously it rendered 'Not Available' placeholders. User needs accurate populated interaction results via ChatGPT/Perplexity."
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-make-the-drug-interaction-tab-workflow-fully-functional-for-2-4-manually-entered-drug-names-when-the-user-enters-drug-1-drug-4-with-at-least-2-non-empty-unique-names-and-clicks-check-interaction-the-app-must-fetch-results-and-render-an-interaction-report-for-all-unique-pairs-among-the-entered-drugs",
+      "title": "Make the Drug Interaction tab workflow fully functional for 2–4 manually entered drug names: when the user enters Drug 1–Drug 4 (with at least 2 non-empty unique names) and clicks \"Check Interaction\", the app must fetch results and render an interaction report for all unique pairs among the entered drugs.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-extend-the-multi-drug-interaction-output-shown-in-the-ui-to-include-clinically-oriented-safety-details-for-each-drug-pair-including-interaction-description-likely-reactions-clinical-effects-toxicity-risk-qualitative-level-and-clear-management-recommendations-also-add-a-dedicated-section-for-special-populations-considerations-at-minimum-pregnancy-lactation-pediatrics-geriatrics",
+      "title": "Extend the multi-drug interaction output shown in the UI to include clinically oriented safety details for each drug pair, including: interaction description, likely reactions/clinical effects, toxicity risk (qualitative level), and clear management recommendations; also add a dedicated section for \"Special populations\" considerations (at minimum: pregnancy, lactation, pediatrics, geriatrics).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-most-relevant-precise-summary-section-at-the-top-of-the-results-that-synthesizes-overall-safety-risk-across-all-entered-drugs-highlighting-the-highest-severity-pair-s-and-the-top-actionable-recommendation-s",
+      "title": "Implement a \"most relevant, precise\" summary section at the top of the results that synthesizes overall safety risk across all entered drugs, highlighting the highest-severity pair(s) and the top actionable recommendation(s).",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-clear-user-facing-disclaimers-on-the-drug-interaction-results-stating-the-information-is-for-decision-support-only-and-not-a-substitute-for-professional-medical-judgment-and-that-users-should-verify-with-authoritative-sources",
+      "title": "Add clear user-facing disclaimers on the Drug Interaction results stating the information is for decision support only and not a substitute for professional medical judgment, and that users should verify with authoritative sources.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-multi-drug-interaction-checker-so-that-when-a-user-enters-3-drug-names-manually-and-clicks-check-interactions-the-results-are-populated-with-real-interaction-details-when-data-exists-instead-of-every-field-rendering-as-not-available-this-includes-ensuring-the-data-source-backend-safety-advisory-response-returns-non-empty-per-pair-interaction-content-for-the-generated-drug-pairs-whenever-the-application-has-a-matching-interaction-record",
+      "title": "Fix the multi-drug interaction checker so that when a user enters 3 drug names manually and clicks \"Check Interactions\", the results are populated with real interaction details when data exists (instead of every field rendering as \"Not Available\"). This includes ensuring the data source (backend safety advisory response) returns non-empty, per-pair interaction content for the generated drug pairs whenever the application has a matching interaction record.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-or-minimize-frontend-generated-placeholder-interaction-objects-that-cause-a-full-not-available-report-when-the-backend-does-not-return-an-interaction-for-a-pair-the-ui-must-clearly-indicate-that-no-interaction-data-was-found-for-that-specific-pair-in-english-and-should-not-present-a-full-set-of-not-available-clinical-fields-as-if-it-were-a-completed-report",
+      "title": "Remove or minimize frontend-generated placeholder interaction objects that cause a full \"Not Available\" report. When the backend does not return an interaction for a pair, the UI must clearly indicate that no interaction data was found for that specific pair (in English), and should not present a full set of \"Not Available\" clinical fields as if it were a completed report.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-normalize-drug-name-matching-for-pairwise-interaction-lookups-so-that-differences-in-casing-extra-spaces-punctuation-e-g-hyphens-and-ordering-do-not-prevent-an-existing-interaction-from-being-matched-to-the-expected-pair-in-the-ui-results",
+      "title": "Normalize drug name matching for pairwise interaction lookups so that differences in casing, extra spaces, punctuation (e.g., hyphens), and ordering do not prevent an existing interaction from being matched to the expected pair in the UI results.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-user-visible-load-example-control-in-the-drug-interaction-checker-drug-drug-tab-that-populates-drug-1-drug-4-with-preselected-medication-names-known-to-have-interaction-data-in-the-app-s-local-interaction-dataset-so-users-can-immediately-test-and-see-non-empty-interaction-results",
+      "title": "Add a user-visible \"Load example\" control in the Drug Interaction Checker (Drug-Drug tab) that populates Drug 1–Drug 4 with preselected medication names known to have interaction data in the app’s local interaction dataset, so users can immediately test and see non-empty interaction results.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-app-s-local-drug-interaction-dataset-and-mapping-logic-used-by-the-multi-drug-interaction-check-produce-fully-populated-clinically-oriented-interaction-fields-interaction-type-evidence-level-description-clinical-effects-likely-reactions-toxicity-risk-level-management-recommendations-references-for-the-included-example-inputs-so-results-are-not-shown-as-not-available-when-data-exists",
+      "title": "Ensure the app’s local drug interaction dataset and mapping logic used by the multi-drug interaction check produce fully populated, clinically oriented interaction fields (interaction type, evidence level, description, clinical effects/likely reactions, toxicity risk level, management recommendations, references) for the included example inputs so results are not shown as \"Not Available\" when data exists.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-drug-interaction-results-rendering-regression-so-that-after-a-successful-check-interactions-action-the-ui-always-shows-a-clear-per-pair-outcome-either-a-populated-interaction-report-for-that-pair-or-an-explicit-english-message-that-no-interaction-data-was-found-for-that-specific-pair-rather-than-showing-a-blank-near-empty-results-area",
+      "title": "Fix the Drug Interaction results rendering regression so that after a successful \"Check Interactions\" action, the UI always shows a clear per-pair outcome: either a populated interaction report for that pair or an explicit English message that no interaction data was found for that specific pair, rather than showing a blank/near-empty results area.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-short-user-facing-note-in-the-drug-interaction-checker-explaining-that-results-come-from-the-app-s-built-in-interaction-database-and-may-be-incomplete-rather-than-implying-chatgpt-perplexity-is-being-used-to-generate-interaction-content",
+      "title": "Add a short, user-facing note in the Drug Interaction Checker explaining that results come from the app’s built-in interaction database (and may be incomplete), rather than implying ChatGPT/Perplexity is being used to generate interaction content.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-drug-interaction-checker-results-drug-drug-tab-explicitly-display-the-interacting-drug-pair-e-g-warfarin-aspirin-for-each-pairwise-interaction-result-so-users-can-clearly-see-which-two-drugs-the-interaction-report-refers-to-this-drug-pair-label-must-be-shown-for-both-cases-1-when-interaction-details-are-available-and-2-when-no-interaction-data-is-found-for-that-pair-the-label-should-still-be-shown-alongside-the-no-data-message",
+      "title": "In the Drug Interaction Checker results (Drug-Drug tab), explicitly display the interacting drug pair (e.g., \"Warfarin + Aspirin\") for each pairwise interaction result so users can clearly see which two drugs the interaction report refers to. This drug-pair label must be shown for both cases: (1) when interaction details are available, and (2) when no interaction data is found for that pair (the label should still be shown alongside the no-data message).",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Make Drug Interaction tab functional: allow entering 2+ drug names and on 'Check Interactions' show drug-drug interactions, safety details (reactions, toxicity), including special pharmacovigilance populations; use ChatGPT/Perplexity for precise results.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "In Drug Interaction results UI, explicitly show the interacting drug pair (e.g., Drug A + Drug B) alongside each interaction report.",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "BRAINOPHARM",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

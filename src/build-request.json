@@ -1,0 +1,37 @@
+{
+  "kind": "build_request",
+  "title": "Show explicit drug pair labels in interaction results",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-12",
+      "text": "In the Drug Interaction Checker results (Drug-Drug tab), explicitly display the interacting drug pair (e.g., \"Warfarin + Aspirin\") for each pairwise interaction result so users can clearly see which two drugs the interaction report refers to. This drug-pair label must be shown for both cases: (1) when interaction details are available, and (2) when no interaction data is found for that pair (the label should still be shown alongside the no-data message).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-3"
+        ],
+        "quotes": [
+          "please also show the drug pair interaction"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After running \"Check Interactions\" with >= 2 drug names, each rendered pairwise result section/card includes a prominent drug-pair label in the format \"<Drug A> + <Drug B>\".",
+        "If the app shows a per-pair \"no interaction data found\" message, that message is displayed together with the drug-pair label for the same pair (not as a standalone message without the pair context).",
+        "The drug-pair label uses the same displayed drug names as the interaction object’s drugs fields (e.g., interaction.drugs.drugA and interaction.drugs.drugB), and is user-facing English text."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not edit any files under frontend/src/components/ui or any other frontend immutablePaths.",
+    "Keep the existing single-actor Motoko backend architecture unchanged unless strictly required for this UI change."
+  ],
+  "nonGoals": [
+    "Changing the interaction data source, dataset contents, or backend matching logic.",
+    "Adding new tabs or new interaction types beyond displaying the drug pair label."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

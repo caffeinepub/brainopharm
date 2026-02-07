@@ -1,0 +1,27 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-in-the-drug-interaction-checker-results-drug-drug-tab-explicitly-display-the-interacting-drug-pair-e-g-warfarin-aspirin-for-each-pairwise-interaction-result-so-users-can-clearly-see-which-two-drugs-the-interaction-report-refers-to-this-drug-pair-label-must-be-shown-for-both-cases-1-when-interaction-details-are-available-and-2-when-no-interaction-data-is-found-for-that-pair-the-label-should-still-be-shown-alongside-the-no-data-message",
+      "featureTitle": "In the Drug Interaction Checker results (Drug-Drug tab), explicitly display the interacting drug pair (e.g., \"Warfarin + Aspirin\") for each pairwise interaction result so users can clearly see which two drugs the interaction report refers to. This drug-pair label must be shown for both cases: (1) when interaction details are available, and (2) when no interaction data is found for that pair (the label should still be shown alongside the no-data message).",
+      "files": [
+        "frontend/src/components/DrugInteractionsModule.tsx",
+        "frontend/src/utils/drugPairs.ts"
+      ],
+      "components": [
+        "authorization@3.0.0",
+        "http-outcalls@3.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-12"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

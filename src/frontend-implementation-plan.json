@@ -1,0 +1,28 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Explicit drug-pair labels in Drug Interaction Checker results",
+  "requirements": [
+    {
+      "id": "REQ-12",
+      "summary": "Show an explicit \"<Drug A> + <Drug B>\" label for every pairwise Drug-Drug interaction result, including no-data cases.",
+      "acceptanceCriteria": [
+        "After running \"Check Interactions\" with >= 2 drug names, each rendered pairwise result section/card includes a prominent drug-pair label in the format \"<Drug A> + <Drug B>\".",
+        "If the app shows a per-pair \"no interaction data found\" message, that message is displayed together with the drug-pair label for the same pair (not as a standalone message without the pair context).",
+        "The drug-pair label uses the same displayed drug names as the interaction object’s drugs fields (e.g., interaction.drugs.drugA and interaction.drugs.drugB), and is user-facing English text."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DrugInteractionsModule.tsx",
+          "operation": "modify",
+          "description": "Update the Drug-Drug tab pairwise interaction rendering to always include a prominent drug-pair label derived from interaction.drugs.drugA and interaction.drugs.drugB (formatted as \"<Drug A> + <Drug B>\") at the top of each pair result card/section, and ensure the label remains visible in both the details-present path and the per-pair no-data message path. Do not edit any files under frontend/src/components/ui."
+        },
+        {
+          "path": "frontend/src/utils/drugPairs.ts",
+          "operation": "modify",
+          "description": "Add or update a small utility helper to format a user-facing drug pair label from two displayed drug names (e.g., (drugA, drugB) => `${drugA} + ${drugB}`) so the UI can use a single consistent formatter for the per-pair header label."
+        }
+      ]
+    }
+  ]
+}
