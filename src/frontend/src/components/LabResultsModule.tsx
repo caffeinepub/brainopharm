@@ -85,7 +85,7 @@ export default function LabResultsModule({ patientId }: LabResultsModuleProps) {
         </TabsList>
 
         <TabsContent value="entry">
-          <LabResultsForm patientId={patientId} patient={patient} />
+          <LabResultsForm patientId={patientId} />
         </TabsContent>
 
         <TabsContent value="list">

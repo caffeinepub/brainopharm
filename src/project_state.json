@@ -1,48 +1,34 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Build/update an application that manages prescriber information and maintains an up-to-date drug details database.",
+  "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "Drug Interaction checker does not display fully updated results after manual data entry when running Drug-Drug, Drug-Food, and Food-Food interaction checks."
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-prescriber-details-section-to-match-the-requested-prescriber-fields-and-labels-prefix-dropdown-options-must-display-exactly-dr-practitioner-nurse-and-pharmacist-fields-must-include-registration-number-address-mail-id-email-contact-number-and-specialization-and-these-values-must-be-saved-and-displayed-consistently-for-the-selected-patient",
-      "title": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
+      "id": "feature-replace-the-stubbed-interaction-check-hooks-with-real-client-side-react-query-queries-so-that-clicking-check-interactions-returns-and-displays-the-latest-results-based-on-the-current-manually-entered-inputs-for-drug-drug-multi-drug-drug-food-and-food-food",
+      "title": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-tighten-prescriber-details-validation-so-the-prescriber-record-is-complete-require-non-empty-values-for-registration-number-address-contact-number-and-specialization-require-a-valid-email-format-for-mail-id-and-require-mail-id-to-be-provided-non-empty-validation-errors-must-be-shown-inline-and-prevent-saving",
-      "title": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
+      "id": "feature-implement-and-enforce-input-validation-for-manual-interaction-checks-across-drug-drug-drug-food-and-food-food-before-running-the-check-and-display-clear-english-validation-messages-in-the-module-when-validation-fails",
+      "title": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-audit-the-built-in-drug-database-so-every-drug-record-shown-in-the-ui-has-complete-core-fields-name-status-category-date-description-source-attribution-safety-ban-information-and-update-the-curated-datasets-as-needed-so-the-drug-list-details-are-fully-up-to-date-and-consistent",
-      "title": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
+      "id": "feature-ensure-that-interaction-results-shown-in-the-drug-interaction-module-are-computed-from-the-current-local-datasets-indexes-and-are-not-blocked-by-backend-availability-including-drug-drug-lookups-via-the-local-drug-drug-interaction-dataset-index-drug-food-lookups-via-the-drug-food-dataset-index-and-food-food-lookups-via-the-food-food-dataset-index",
+      "title": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
       "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-perform-an-end-to-end-ui-review-of-the-patient-case-flow-patient-selection-case-entry-tabs-case-summary-specifically-to-ensure-prescriber-details-and-drug-database-modules-are-complete-consistent-and-user-facing-copy-is-clear-english-fix-any-broken-placeholder-behavior-encountered-in-these-areas-that-blocks-normal-use",
-      "title": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-apply-a-coherent-modern-clinical-visual-theme-across-the-affected-screens-prescriber-details-drug-list-details-case-summary-using-a-warm-neutral-palette-avoid-blue-purple-consistent-typography-and-spacing-without-changing-app-functionality",
-      "title": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
-      "reqIds": [
-        "REQ-6"
+        "REQ-3"
       ],
       "version": 1
     }
@@ -50,32 +36,12 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add prescriber details section including prefix dropdown (Dr., practitioner nurse, pharmacist) and fields for registration number, address, email, contact number, specialization.",
+      "summary": "Fix Drug Interaction section so that when manually entering data and checking Drug-Drug, Drug-Food, or Food-Food interactions, clicking 'Check interactions' shows fully updated results (including required validation).",
       "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Review and update the drug catalog/details to ensure all drug information is included and fully up to date.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Perform a full app review (\"check everything\") and add any missing essential fields/features to make the app current.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Ensure backend prescriber storage and API behavior supports the required Prescriber Details fields (prefix, full name, registration number, specialization, contact number, email, address) and does not allow saving empty strings for required fields; return a clear error message when invalid prescriber details are submitted.",
-      "reqIds": [
-        "REQ-3"
-      ],
       "status": "pending"
     }
   ],
-  "projectName": "Expand and validate Prescriber Details + make Drug Database fully complete and up to date",
+  "projectName": "Fix Drug Interaction checker to show fully updated results after manual entry (Drug-Drug, Drug-Food, Food-Food)",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

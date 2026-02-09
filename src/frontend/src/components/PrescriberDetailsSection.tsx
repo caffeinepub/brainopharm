@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -9,6 +9,7 @@ import { Loader2, Save, X, UserCog } from 'lucide-react';
 import { useGetPrescriberDetails, useSavePrescriberDetails } from '../hooks/useQueries';
 import { PrescriberPrefix, PrescriberDetails } from '../backend';
 import { toast } from 'sonner';
+import { validateRequired, validateEmail, validateContactNumber, getFirstInvalidField } from '../utils/formValidation';
 
 interface PrescriberDetailsSectionProps {
   patientId: string;
@@ -29,6 +30,14 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Refs for focus management
+  const fullNameRef = useRef<HTMLInputElement | null>(null);
+  const registrationNumberRef = useRef<HTMLInputElement | null>(null);
+  const specializationRef = useRef<HTMLInputElement | null>(null);
+  const contactNumberRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const addressRef = useRef<HTMLTextAreaElement | null>(null);
+
   // Load existing details when available
   useEffect(() => {
     if (existingDetails) {
@@ -45,41 +54,64 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
+    const fullNameValidation = validateRequired(fullName, 'Full name');
+    if (!fullNameValidation.isValid) {
+      newErrors.fullName = fullNameValidation.error!;
     }
 
-    if (!registrationNumber.trim()) {
-      newErrors.registrationNumber = 'Registration number is required';
+    const registrationNumberValidation = validateRequired(registrationNumber, 'Registration number');
+    if (!registrationNumberValidation.isValid) {
+      newErrors.registrationNumber = registrationNumberValidation.error!;
     }
 
-    if (!specialization.trim()) {
-      newErrors.specialization = 'Specialization is required';
+    const specializationValidation = validateRequired(specialization, 'Specialization');
+    if (!specializationValidation.isValid) {
+      newErrors.specialization = specializationValidation.error!;
     }
 
-    if (!contactNumber.trim()) {
-      newErrors.contactNumber = 'Contact number is required';
-    } else if (!/^\+?[\d\s\-()]+$/.test(contactNumber)) {
-      newErrors.contactNumber = 'Please enter a valid contact number';
+    const contactNumberValidation = validateContactNumber(contactNumber);
+    if (!contactNumberValidation.isValid) {
+      newErrors.contactNumber = contactNumberValidation.error!;
     }
 
-    if (!email.trim()) {
-      newErrors.email = 'Mail ID is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please enter a valid email address';
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error!;
     }
 
-    if (!address.trim()) {
-      newErrors.address = 'Address is required';
+    const addressValidation = validateRequired(address, 'Address');
+    if (!addressValidation.isValid) {
+      newErrors.address = addressValidation.error!;
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const focusFirstInvalidField = () => {
+    const firstInvalid = getFirstInvalidField(errors);
+    if (!firstInvalid) return;
+
+    const refMap: Record<string, React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>> = {
+      fullName: fullNameRef,
+      registrationNumber: registrationNumberRef,
+      specialization: specializationRef,
+      contactNumber: contactNumberRef,
+      email: emailRef,
+      address: addressRef,
+    };
+
+    const ref = refMap[firstInvalid];
+    if (ref?.current) {
+      ref.current.focus();
+    }
+  };
+
   const handleSave = async () => {
     if (!validateForm()) {
       toast.error('Please fix the validation errors before saving');
+      // Focus the first invalid field after a short delay to allow error messages to render
+      setTimeout(focusFirstInvalidField, 100);
       return;
     }
 
@@ -212,7 +244,11 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   Prefix <span className="text-red-600 dark:text-red-500">*</span>
                 </Label>
                 <Select value={prefix} onValueChange={(value) => setPrefix(value as PrescriberPrefix)}>
-                  <SelectTrigger id="prefix" className="border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950">
+                  <SelectTrigger 
+                    id="prefix" 
+                    className="border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950"
+                    aria-required="true"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,13 +264,17 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   Full Name <span className="text-red-600 dark:text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={fullNameRef}
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Enter full name"
                   className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.fullName ? 'border-red-500' : ''}`}
+                  aria-required="true"
+                  aria-invalid={!!errors.fullName}
+                  aria-describedby={errors.fullName ? 'fullName-error' : undefined}
                 />
-                {errors.fullName && <p className="text-xs text-red-600 dark:text-red-500">{errors.fullName}</p>}
+                {errors.fullName && <p id="fullName-error" className="text-xs text-red-600 dark:text-red-500">{errors.fullName}</p>}
               </div>
 
               <div className="space-y-2">
@@ -242,13 +282,17 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   Registration Number <span className="text-red-600 dark:text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={registrationNumberRef}
                   id="registrationNumber"
                   value={registrationNumber}
                   onChange={(e) => setRegistrationNumber(e.target.value)}
                   placeholder="Enter registration number"
                   className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.registrationNumber ? 'border-red-500' : ''}`}
+                  aria-required="true"
+                  aria-invalid={!!errors.registrationNumber}
+                  aria-describedby={errors.registrationNumber ? 'registrationNumber-error' : undefined}
                 />
-                {errors.registrationNumber && <p className="text-xs text-red-600 dark:text-red-500">{errors.registrationNumber}</p>}
+                {errors.registrationNumber && <p id="registrationNumber-error" className="text-xs text-red-600 dark:text-red-500">{errors.registrationNumber}</p>}
               </div>
 
               <div className="space-y-2">
@@ -256,13 +300,17 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   Specialization <span className="text-red-600 dark:text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={specializationRef}
                   id="specialization"
                   value={specialization}
                   onChange={(e) => setSpecialization(e.target.value)}
                   placeholder="e.g., Cardiology, General Medicine"
                   className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.specialization ? 'border-red-500' : ''}`}
+                  aria-required="true"
+                  aria-invalid={!!errors.specialization}
+                  aria-describedby={errors.specialization ? 'specialization-error' : undefined}
                 />
-                {errors.specialization && <p className="text-xs text-red-600 dark:text-red-500">{errors.specialization}</p>}
+                {errors.specialization && <p id="specialization-error" className="text-xs text-red-600 dark:text-red-500">{errors.specialization}</p>}
               </div>
 
               <div className="space-y-2">
@@ -270,13 +318,17 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   Contact Number <span className="text-red-600 dark:text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={contactNumberRef}
                   id="contactNumber"
                   value={contactNumber}
                   onChange={(e) => setContactNumber(e.target.value)}
                   placeholder="+91 1234567890"
                   className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.contactNumber ? 'border-red-500' : ''}`}
+                  aria-required="true"
+                  aria-invalid={!!errors.contactNumber}
+                  aria-describedby={errors.contactNumber ? 'contactNumber-error' : undefined}
                 />
-                {errors.contactNumber && <p className="text-xs text-red-600 dark:text-red-500">{errors.contactNumber}</p>}
+                {errors.contactNumber && <p id="contactNumber-error" className="text-xs text-red-600 dark:text-red-500">{errors.contactNumber}</p>}
               </div>
 
               <div className="space-y-2">
@@ -284,14 +336,18 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   Mail ID <span className="text-red-600 dark:text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={emailRef}
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@example.com"
                   className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.email ? 'border-red-500' : ''}`}
+                  aria-required="true"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                 />
-                {errors.email && <p className="text-xs text-red-600 dark:text-red-500">{errors.email}</p>}
+                {errors.email && <p id="email-error" className="text-xs text-red-600 dark:text-red-500">{errors.email}</p>}
               </div>
             </div>
 
@@ -300,18 +356,26 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                 Address <span className="text-red-600 dark:text-red-500">*</span>
               </Label>
               <Textarea
+                ref={addressRef}
                 id="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Enter complete address"
                 rows={3}
                 className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.address ? 'border-red-500' : ''}`}
+                aria-required="true"
+                aria-invalid={!!errors.address}
+                aria-describedby={errors.address ? 'address-error' : undefined}
               />
-              {errors.address && <p className="text-xs text-red-600 dark:text-red-500">{errors.address}</p>}
+              {errors.address && <p id="address-error" className="text-xs text-red-600 dark:text-red-500">{errors.address}</p>}
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleSave} disabled={saveDetails.isPending} className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800">
+              <Button 
+                onClick={handleSave} 
+                disabled={saveDetails.isPending} 
+                className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800"
+              >
                 {saveDetails.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

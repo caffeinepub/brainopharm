@@ -1,153 +1,79 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Prescriber Details expansion + Drug Database completeness + warm clinical theme (frontend-only)",
+  "title": "Fix Drug Interaction checker to compute fresh, validated local results on each manual check",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Expand Prescriber Details fields/labels (including exact prefix options) and ensure saved values load consistently per selected patient.",
+      "summary": "Replace stubbed interaction-check hooks with real client-side React Query queries so each click computes and renders results for the current manual inputs (Drug-Drug, Drug-Food, Food-Food).",
       "acceptanceCriteria": [
-        "In the Prescriber Details UI, prefix is a dropdown and the visible option labels are exactly: \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\".",
-        "The Prescriber Details UI shows input fields for: Registration Number, Address, Mail ID (email), Contact Number, Specialization.",
-        "When a user saves Prescriber Details for a patient, leaving and returning to the patient shows the saved values (view mode and edit mode load the saved data).",
-        "User-facing labels use English and include \"Mail ID\" (not only \"Email Address\") for the email field."
+        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Drug tab, the results list updates to match the current input values (not previous inputs).",
+        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Food tab, the results list updates to match the current input values (not previous inputs).",
+        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Food-Food tab, the results list updates to match the current input values (not previous inputs).",
+        "The interaction hooks provide working loading and error states (isLoading/isPending/error) so the UI can show a spinner/skeleton and an error message when needed.",
+        "The query keys include the normalized input set(s) so re-checking after editing inputs always triggers a fresh computation and re-render."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
-          "operation": "modify",
-          "description": "Update the Prescriber Details form UI to match requested labels/fields: ensure the prefix dropdown shows exactly \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\" and rename the email label to \"Mail ID\". Use shadcn-ui form primitives already in use (Select, Input, Textarea, Card, Label) to keep consistent styling; verify the component's usage instructions before implementing. Ensure view mode also reflects the same English labels (e.g., show \"Mail ID\" instead of \"Email\") and displays the saved values for the currently selected patient."
-        },
-        {
-          "path": "frontend/src/components/CaseSummary.tsx",
-          "operation": "modify",
-          "description": "Update Case Summary's Prescriber Details section to use consistent English labels (including \"Mail ID\") and display prescriber values reliably for the selected patient (same prefix labels and field naming). Use existing shadcn-ui Card/Separator structure; verify the component's usage instructions before implementing."
-        },
-        {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the prescriber save flow results in consistent reload behavior: after saving, invalidate/refetch the prescriber details query for the affected patientId so leaving/returning to the patient always shows the persisted data (and edit mode hydrates from saved data)."
+          "description": "Replace the stubbed hooks (useCheckMultiDrugInteraction/useCheckDrugFoodInteractions/useCheckFoodFoodInteractions) with real useQuery-based hooks that: (1) compute results client-side, (2) expose isLoading/isPending/error from React Query, and (3) use query keys that include a stable, normalized representation of the current inputs (sorted + normalization) so changing inputs and clicking \"Check interactions\" always triggers a fresh computation and re-render."
+        },
+        {
+          "path": "frontend/src/services/localInteractionCheckService.ts",
+          "operation": "create",
+          "description": "Add a client-side service that performs the three interaction computations (Drug-Drug multi-pair, Drug-Food combinations, Food-Food unique pairs) and returns result shapes matching the existing UI cards. Centralize normalization, sorting, and pair generation so the React Query hooks can call a single computation layer."
+        },
+        {
+          "path": "frontend/src/components/DrugInteractionsModule.tsx",
+          "operation": "modify",
+          "description": "Wire the updated hooks into the UI so the module renders loading skeleton/spinner and error messages using the returned isLoading/isPending/error states, and ensure the \"Check interactions\" buttons update the hook inputs from the latest manual entries (no stale state)."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Tighten Prescriber Details validation: required fields, required valid Mail ID, inline errors, and prevent saving when invalid.",
+      "summary": "Implement and enforce manual-input validation for Drug-Drug, Drug-Food, and Food-Food checks and show clear English validation messages without running checks when invalid.",
       "acceptanceCriteria": [
-        "Attempting to save with any missing required field shows an inline error and the save mutation is not triggered.",
-        "Mail ID is required; saving with an empty Mail ID shows an inline error.",
-        "Mail ID must match an email pattern; saving with an invalid email shows an inline error.",
-        "Contact Number validation accepts phone-like input (digits/spaces/+/-/() ) and rejects clearly invalid input as it does today."
+        "Drug-Drug: If fewer than 2 medications are entered, show: \"Please enter at least two medications to check interactions.\" and do not run the check.",
+        "Drug-Drug: If duplicate drug names are entered (case/spacing/punctuation-insensitive), show: \"Please enter different medications. Duplicate drug names detected.\" and do not run the check.",
+        "Drug-Food: If no drug is entered or no food is entered, show a clear validation message (English) and do not run the check.",
+        "Drug-Food: If duplicate drugs or duplicate foods are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check.",
+        "Food-Food: If fewer than 2 foods are entered, show a clear validation message (English) and do not run the check.",
+        "Food-Food: If duplicate food names are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
+          "path": "frontend/src/components/DrugInteractionsModule.tsx",
           "operation": "modify",
-          "description": "Update client-side validation: require non-empty registration number, address, contact number, and specialization; require Mail ID to be non-empty and match an email pattern; keep phone-like validation for contact number (digits/spaces/+/-/()). Show errors inline next to each field (using existing error text pattern) and ensure handleSave returns early so the save mutation is not triggered when invalid. Keep all user-facing validation copy in clear English. Use existing shadcn-ui inputs and form layout; verify the component's usage instructions before implementing."
+          "description": "Add/complete validation logic for Drug-Food and Food-Food (and keep Drug-Drug behavior) using existing normalization-based duplicate detection. Prevent updating the \"toCheck\" state and prevent marking \"search performed\" when validation fails; display the specified English messages in the module for each tab."
+        },
+        {
+          "path": "frontend/src/services/localInteractionCheckService.ts",
+          "operation": "modify",
+          "description": "Add small shared helpers (input normalization/deduplication utilities used by hooks) to keep query keys and computations consistent with the UI’s validation rules (case/spacing/punctuation-insensitive comparisons)."
         }
       ]
     },
     {
-      "id": "REQ-4",
-      "summary": "Audit and harden Drug Database UI/data so core fields are complete, render with consistent fallbacks, and banned records always show a Ban Reason & Safety Information section; update curated datasets and normalization rules accordingly.",
+      "id": "REQ-3",
+      "summary": "Ensure Drug Interaction results are computed from local datasets/indexes (drug-drug, drug-food, food-food) and continue working without backend/actor availability.",
       "acceptanceCriteria": [
-        "Drug list and Drug Details modal never crash due to missing/empty core drug fields; missing values display a consistent English fallback such as \"Not available\".",
-        "Banned drugs always display a clearly labeled \"Ban Reason & Safety Information\" section populated from the dataset (or a fallback if missing).",
-        "Curated drug dataset entries are updated so core fields are populated consistently (no empty string core fields) for records included in the shipped dataset.",
-        "Any normalization/deduplication does not remove banned entries in favor of approved entries when duplicates exist (banned must still win)."
+        "Drug-Drug results are produced from the local drug-drug interaction data source and are returned as an array of interaction cards (including \"No interaction data found...\" cards for missing pairs) that matches the pairings from the entered drugs.",
+        "Drug-Food results are produced from the local drug-food interaction dataset/index for each selected drug-food combination, returning a consistent result shape used by the existing UI cards.",
+        "Food-Food results are produced from the local food-food interaction dataset/index for each unique food pair entered, returning a consistent result shape used by the existing UI cards.",
+        "Performing checks does not require any Motoko/backend changes and works even if the actor is unavailable."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/DrugDetailsModal.tsx",
+          "path": "frontend/src/services/localInteractionCheckService.ts",
           "operation": "modify",
-          "description": "Harden Drug Details rendering to consistently treat empty strings as missing values (not only undefined), using a uniform English fallback like \"Not available\" for core fields. Ensure banned drugs always render a clearly labeled \"Ban Reason & Safety Information\" section; if dataset safety info is empty/missing, show the fallback rather than rendering blank."
+          "description": "Implement computations strictly using existing local sources: (1) drug-drug lookups via the existing local drug-drug dataset/index utilities, (2) drug-food lookups via the cached drug-food index utilities, and (3) food-food lookups via the cached food-food index utilities. Ensure results include explicit “no data” objects where needed so the existing cards render the built-in “No interaction data found...” states."
         },
         {
-          "path": "frontend/src/components/DrugTableModule.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the drug list/table never crashes when any core fields are missing/empty and displays a consistent \"Not available\" fallback in table cells and exports for empty core fields. Keep banned/approved filtering stable and ensure any displayed 'source attribution' is resilient to missing/unknown sources."
-        },
-        {
-          "path": "frontend/src/data/curatedDrugDataset.ts",
-          "operation": "modify",
-          "description": "Update the shipped curated drug dataset so each included record has populated core fields (name, status, category, date, description, source attribution, safety/ban info) and avoids empty strings for those fields. Update normalization/deduplication utilities so duplicates resolve in a way that never drops banned entries in favor of approved entries (banned must win)."
-        },
-        {
-          "path": "frontend/src/services/multiSourceDrugService.ts",
-          "operation": "modify",
-          "description": "Adjust the multi-source drug aggregation/merge logic to normalize empty-string core fields into undefined/\"Not available\"-friendly values (without breaking types) and to prefer banned records (and their safety info) when merging duplicates across sources. Ensure UI consumers receive consistent, non-crashing values for core fields."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "End-to-end UI review of patient case flow to ensure Prescriber Details and Drug Database modules are complete, consistent, and unblocked (loading/empty/save/error states).",
-      "acceptanceCriteria": [
-        "No obvious broken states in Prescriber Details and Drug Database modules (loading, empty state, save state, error state all render correctly).",
-        "Case Summary displays the saved Prescriber Details for the patient without missing-field UI glitches.",
-        "Any user-facing text touched by this change is in English and consistent in terminology (e.g., \"Mail ID\" vs \"Email\")."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/CaseEntry.tsx",
-          "operation": "modify",
-          "description": "Review and adjust the Case Entry flow wiring for the Prescriber Details tab and Drug Database access (where present) to ensure the selected patientId is passed correctly and that module loading/empty/error states render without placeholders blocking use."
-        },
-        {
-          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
-          "operation": "modify",
-          "description": "Ensure Prescriber Details module handles all states cleanly: loading, empty (no details recorded), edit, save pending, and save error states. Standardize user-facing copy to clear English (including \"Mail ID\"). Use existing shadcn-ui components already imported; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/CaseSummary.tsx",
-          "operation": "modify",
-          "description": "Ensure Case Summary renders prescriber details without label inconsistencies or missing-field glitches (use \"Mail ID\" terminology and stable fallbacks). Use existing Card layout; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/DrugTableModule.tsx",
-          "operation": "modify",
-          "description": "Polish Drug Database module state handling (loading skeletons, empty results, refresh/sync pending, and error messaging if hooks provide errors) so it doesn't show broken/placeholder UI that blocks normal browsing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Apply a coherent modern clinical theme across Prescriber Details, Drug list/details, and Case Summary using a warm neutral palette (avoid blue/purple), consistent typography, and spacing.",
-      "acceptanceCriteria": [
-        "Prescriber Details, Drug Database, and Case Summary sections share consistent heading styles, form spacing, and card styling.",
-        "Theme uses a warm neutral palette (e.g., off-white/stone/charcoal with a green or amber accent), and does not introduce blue/purple as the primary theme colors.",
-        "No changes to authentication or routing are required for the theme update."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/tailwind.config.js",
-          "operation": "modify",
-          "description": "Adjust Tailwind theme tokens/colors to support a warm neutral clinical palette (stone/off-white/charcoal with green/amber accent) and ensure primary/secondary accents are not blue/purple. Keep changes compatible with existing components and utility classes."
-        },
-        {
-          "path": "frontend/src/index.css",
-          "operation": "modify",
-          "description": "Update global CSS variables/base styles to align with the warm neutral palette and consistent typography/spacing across affected screens. Avoid introducing new routing/auth behavior."
-        },
-        {
-          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
-          "operation": "modify",
-          "description": "Update local styling classes (cards/headers/form spacing) to match the warm neutral clinical theme while preserving all behavior. Use existing shadcn-ui Card and form elements; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/CaseSummary.tsx",
-          "operation": "modify",
-          "description": "Align Case Summary styling (headings, section cards, spacing) to the same warm neutral theme; remove blue-forward styling if present and keep functional behavior unchanged. Verify shadcn-ui component usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/DrugTableModule.tsx",
-          "operation": "modify",
-          "description": "Replace blue/purple-forward styling (badges, gradients, borders, headings) with warm neutral + green/amber accents while preserving the module’s behavior and layout. Verify shadcn-ui component usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/DrugDetailsModal.tsx",
-          "operation": "modify",
-          "description": "Update Drug Details modal styling to the same warm neutral theme (headings, section containers, badges) while keeping current content and fallbacks intact. Verify shadcn-ui Dialog usage instructions before implementing."
+          "description": "Ensure the new interaction-check React Query hooks do not depend on useActor/actor availability and never call backend canister methods for these checks; all queryFns should use only the local interaction check service, so checks work even when the actor is unavailable."
         }
       ]
     }

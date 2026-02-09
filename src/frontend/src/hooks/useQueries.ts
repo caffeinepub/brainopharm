@@ -20,6 +20,15 @@ import {
   PrescriberDetails,
 } from '../backend';
 import { multiSourceDrugService } from '../services/multiSourceDrugService';
+import {
+  computeMultiDrugInteractions,
+  computeDrugFoodInteractions,
+  computeFoodFoodInteractions,
+  normalizeInputsForQueryKey,
+  DrugDrugInteractionResult,
+  DrugFoodInteractionResult,
+  FoodFoodInteractionResult,
+} from '../services/localInteractionCheckService';
 
 // Patient queries
 export function useGetAllPatients() {
@@ -408,33 +417,54 @@ export function useCheckFourDrugInteraction() {
   });
 }
 
-// Stub hooks for multi-drug, drug-food, and food-food interactions (client-side only)
-// These return query-like objects with data property for compatibility with existing component usage
-export function useCheckMultiDrugInteraction(_drugs?: string[]) {
-  return {
-    data: [] as any[],
-    isPending: false,
-    isLoading: false,
-    error: null,
-  };
+// Client-side interaction check hooks using React Query
+export function useCheckMultiDrugInteraction(drugs?: string[]) {
+  const queryKey = drugs ? normalizeInputsForQueryKey(drugs) : 'empty';
+
+  return useQuery<DrugDrugInteractionResult[]>({
+    queryKey: ['multiDrugInteraction', queryKey],
+    queryFn: () => {
+      if (!drugs || drugs.length < 2) {
+        return [];
+      }
+      return computeMultiDrugInteractions(drugs);
+    },
+    enabled: !!drugs && drugs.length >= 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 }
 
-export function useCheckDrugFoodInteractions(_drugs?: string[], _foods?: string[]) {
-  return {
-    data: [] as any[],
-    isPending: false,
-    isLoading: false,
-    error: null,
-  };
+export function useCheckDrugFoodInteractions(drugs?: string[], foods?: string[]) {
+  const drugsKey = drugs ? normalizeInputsForQueryKey(drugs) : 'empty';
+  const foodsKey = foods ? normalizeInputsForQueryKey(foods) : 'empty';
+
+  return useQuery<DrugFoodInteractionResult[]>({
+    queryKey: ['drugFoodInteraction', drugsKey, foodsKey],
+    queryFn: () => {
+      if (!drugs || !foods || drugs.length === 0 || foods.length === 0) {
+        return [];
+      }
+      return computeDrugFoodInteractions(drugs, foods);
+    },
+    enabled: !!drugs && !!foods && drugs.length > 0 && foods.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 }
 
-export function useCheckFoodFoodInteractions(_foods?: string[]) {
-  return {
-    data: [] as any[],
-    isPending: false,
-    isLoading: false,
-    error: null,
-  };
+export function useCheckFoodFoodInteractions(foods?: string[]) {
+  const queryKey = foods ? normalizeInputsForQueryKey(foods) : 'empty';
+
+  return useQuery<FoodFoodInteractionResult[]>({
+    queryKey: ['foodFoodInteraction', queryKey],
+    queryFn: () => {
+      if (!foods || foods.length < 2) {
+        return [];
+      }
+      return computeFoodFoodInteractions(foods);
+    },
+    enabled: !!foods && foods.length >= 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 }
 
 // Drug Database queries

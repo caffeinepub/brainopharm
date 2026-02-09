@@ -100,7 +100,7 @@ export default function CaseEntry({ patientId }: CaseEntryProps) {
         </TabsList>
 
         <TabsContent value="lab">
-          <LabResultsForm patientId={patientId} patient={patient} />
+          <LabResultsForm patientId={patientId} />
         </TabsContent>
 
         <TabsContent value="medications">

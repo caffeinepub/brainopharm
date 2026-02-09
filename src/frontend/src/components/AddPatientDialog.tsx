@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, useMemo, memo, useRef } from 'react';
 import { useAddPatient } from '../hooks/useQueries';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { validateRequired, validateNumeric, getFirstInvalidField } from '../utils/formValidation';
 
 interface AddPatientDialogProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface AddPatientDialogProps {
 }
 
 interface ValidationErrors {
+  [key: string]: string | undefined;
   name?: string;
   age?: string;
   gender?: string;
@@ -81,7 +83,8 @@ const FormField = memo(({
   min,
   max,
   step,
-  className
+  className,
+  inputRef
 }: {
   id: string;
   label: string;
@@ -95,6 +98,7 @@ const FormField = memo(({
   max?: string;
   step?: string;
   className?: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }) => {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -106,6 +110,7 @@ const FormField = memo(({
         {label} {required && <span className="text-red-600 dark:text-red-400">*</span>}
       </Label>
       <Input
+        ref={inputRef}
         id={id}
         type={type}
         value={value}
@@ -115,9 +120,12 @@ const FormField = memo(({
         min={min}
         max={max}
         step={step}
+        aria-required={required}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
       />
       {error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p id={`${id}-error`} className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
     </div>
   );
@@ -126,78 +134,104 @@ const FormField = memo(({
 FormField.displayName = 'FormField';
 
 export default function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) {
-  const addPatient = useAddPatient();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
-  const [showValidationError, setShowValidationError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Memoized BMI calculation
+  const addPatient = useAddPatient();
+
+  // Refs for focus management
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const ageRef = useRef<HTMLInputElement | null>(null);
+  const heightRef = useRef<HTMLInputElement | null>(null);
+  const weightRef = useRef<HTMLInputElement | null>(null);
+  const nationalityRef = useRef<HTMLInputElement | null>(null);
+
   const bmi = useMemo(() => calculateBmi(formData.height, formData.weight), [formData.height, formData.weight]);
+
+  const handleFieldChange = useCallback((field: keyof FormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (validationErrors[field as keyof ValidationErrors]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field as keyof ValidationErrors];
+        return newErrors;
+      });
+    }
+  }, [validationErrors]);
 
   const validateForm = useCallback((): boolean => {
     const errors: ValidationErrors = {};
-    let isValid = true;
 
-    if (!formData.name.trim()) {
-      errors.name = 'Full name is required';
-      isValid = false;
+    const nameValidation = validateRequired(formData.name, 'Name');
+    if (!nameValidation.isValid) {
+      errors.name = nameValidation.error;
     }
 
-    const ageNum = parseInt(formData.age);
-    if (!formData.age || isNaN(ageNum) || ageNum <= 0 || ageNum > 150) {
-      errors.age = 'Valid age is required (1-150)';
-      isValid = false;
+    const ageValidation = validateNumeric(formData.age, 'Age', { min: 0, max: 150 });
+    if (!ageValidation.isValid) {
+      errors.age = ageValidation.error;
     }
 
     if (!formData.gender) {
       errors.gender = 'Gender is required';
-      isValid = false;
     }
 
-    if (!formData.nationality.trim()) {
-      errors.nationality = 'Nationality is required';
-      isValid = false;
+    const nationalityValidation = validateRequired(formData.nationality, 'Nationality');
+    if (!nationalityValidation.isValid) {
+      errors.nationality = nationalityValidation.error;
     }
 
-    const heightNum = parseFloat(formData.height);
-    if (!formData.height || isNaN(heightNum) || heightNum <= 0 || heightNum > 300) {
-      errors.height = 'Valid height is required (1-300 cm)';
-      isValid = false;
+    const heightValidation = validateNumeric(formData.height, 'Height', { min: 30, max: 300, allowDecimals: true });
+    if (!heightValidation.isValid) {
+      errors.height = heightValidation.error;
     }
 
-    const weightNum = parseFloat(formData.weight);
-    if (!formData.weight || isNaN(weightNum) || weightNum <= 0 || weightNum > 500) {
-      errors.weight = 'Valid weight is required (1-500 kg)';
-      isValid = false;
+    const weightValidation = validateNumeric(formData.weight, 'Weight', { min: 1, max: 500, allowDecimals: true });
+    if (!weightValidation.isValid) {
+      errors.weight = weightValidation.error;
     }
 
     setValidationErrors(errors);
-    return isValid;
+    return Object.keys(errors).length === 0;
   }, [formData]);
 
-  const resetForm = useCallback(() => {
-    setFormData(initialFormData);
-    setValidationErrors({});
-    setShowValidationError(false);
-    setShowSuccess(false);
-  }, []);
+  const focusFirstInvalidField = useCallback(() => {
+    const firstInvalid = getFirstInvalidField(validationErrors);
+    if (!firstInvalid) return;
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    
-    setShowValidationError(false);
+    const refMap: Record<string, React.RefObject<HTMLInputElement | null>> = {
+      name: nameRef,
+      age: ageRef,
+      height: heightRef,
+      weight: weightRef,
+      nationality: nationalityRef,
+    };
+
+    const ref = refMap[firstInvalid];
+    if (ref?.current) {
+      ref.current.focus();
+    }
+  }, [validationErrors]);
+
+  const handleSubmit = useCallback(async () => {
     setShowSuccess(false);
+    setShowError(false);
 
     if (!validateForm()) {
-      setShowValidationError(true);
+      setShowError(true);
+      setErrorMessage('Please fix the validation errors before submitting');
+      setTimeout(focusFirstInvalidField, 100);
       return;
     }
 
-    addPatient.mutate(
-      {
+    try {
+      const result = await addPatient.mutateAsync({
         name: formData.name.trim(),
-        age: BigInt(formData.age),
+        age: BigInt(parseInt(formData.age, 10)),
         gender: formData.gender,
         height: parseFloat(formData.height),
         weight: parseFloat(formData.weight),
@@ -205,260 +239,247 @@ export default function AddPatientDialog({ open, onOpenChange }: AddPatientDialo
         address: formData.address.trim() || null,
         phone: formData.phone.trim() || null,
         bloodGroup: formData.bloodGroup || null,
-      },
-      {
-        onSuccess: () => {
-          setShowSuccess(true);
-          resetForm();
-          
-          setTimeout(() => {
-            setShowSuccess(false);
-            onOpenChange(false);
-          }, 1000);
-        },
-        onError: (error) => {
-          console.error('Failed to add patient:', error);
-        }
+      });
+
+      if (result.status === 'success') {
+        setShowSuccess(true);
+        setTimeout(() => {
+          setFormData(initialFormData);
+          setValidationErrors({});
+          setShowSuccess(false);
+          onOpenChange(false);
+        }, 1000);
+      } else {
+        setShowError(true);
+        setErrorMessage(result.error || 'Failed to add patient');
       }
-    );
-  }, [formData, validateForm, addPatient, resetForm, onOpenChange]);
-
-  // Memoized field change handlers
-  const handleFieldChange = useCallback((field: keyof FormData) => (value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (validationErrors[field as keyof ValidationErrors]) {
-      setValidationErrors(prev => ({ ...prev, [field]: undefined }));
+    } catch (error: any) {
+      console.error('Error adding patient:', error);
+      setShowError(true);
+      setErrorMessage(error.message || 'An unexpected error occurred');
     }
-  }, [validationErrors]);
+  }, [formData, validateForm, addPatient, onOpenChange, focusFirstInvalidField]);
 
-  const handleGenderChange = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, gender: value }));
-    if (validationErrors.gender) {
-      setValidationErrors(prev => ({ ...prev, gender: undefined }));
-    }
-  }, [validationErrors.gender]);
-
-  const handleBloodGroupChange = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, bloodGroup: value }));
-  }, []);
+  const handleClose = useCallback(() => {
+    setFormData(initialFormData);
+    setValidationErrors({});
+    setShowSuccess(false);
+    setShowError(false);
+    setErrorMessage('');
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px] bg-[#f5f5f5] dark:bg-gray-900">
-        <DialogHeader className="bg-white dark:bg-gray-800 rounded-t-lg p-6 -mx-6 -mt-6 mb-4">
-          <DialogTitle className="text-2xl text-[#007bff] dark:text-blue-400">Add New Patient</DialogTitle>
-          <DialogDescription className="text-base text-gray-600 dark:text-gray-300">
-            Enter patient demographic information. Fields marked with * are required.
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Add New Patient
+          </DialogTitle>
+          <DialogDescription className="text-gray-600 dark:text-gray-400">
+            Enter patient information to create a new record
           </DialogDescription>
         </DialogHeader>
-        
-        {showSuccess && (
-          <Alert className="bg-green-50 border-green-500 dark:bg-green-900/20 dark:border-green-700 animate-in fade-in slide-in-from-top-2 duration-300">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertDescription className="text-green-800 dark:text-green-200 font-medium">
-              Patient added successfully
-            </AlertDescription>
-          </Alert>
-        )}
 
-        {showValidationError && Object.keys(validationErrors).length > 0 && (
-          <Alert className="bg-red-50 border-red-500 dark:bg-red-900/20 dark:border-red-700 animate-in fade-in slide-in-from-top-2 duration-300">
-            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
-              Please fill out all required fields correctly.
-            </AlertDescription>
-          </Alert>
-        )}
+        <div className="space-y-6 py-4">
+          {showSuccess && (
+            <Alert className="border-green-500 bg-green-50 dark:bg-green-950/30">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                Patient added successfully!
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {addPatient.isError && (
-          <Alert className="bg-red-50 border-red-500 dark:bg-red-900/20 dark:border-red-700 animate-in fade-in slide-in-from-top-2 duration-300">
-            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
-              Failed to save patient. Please try again.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-[#007bff] dark:text-blue-400 border-b-2 border-[#007bff] dark:border-blue-400 pb-2">
-                Mandatory Information
-              </h3>
+          {showError && (
+            <Alert className="border-red-500 bg-red-50 dark:bg-red-950/30">
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <AlertDescription className="text-red-800 dark:text-red-200">
+                {errorMessage}
+              </AlertDescription>
+            </Alert>
+          )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  id="name"
-                  label="Full Name"
-                  value={formData.name}
-                  onChange={handleFieldChange('name')}
-                  error={validationErrors.name}
-                  required
-                  placeholder="Enter full name"
-                  className={getInputClassName('name', validationErrors)}
-                />
-                <FormField
-                  id="age"
-                  label="Age"
-                  type="number"
-                  value={formData.age}
-                  onChange={handleFieldChange('age')}
-                  error={validationErrors.age}
-                  required
-                  placeholder="Enter age"
-                  min="0"
-                  max="150"
-                  className={getInputClassName('age', validationErrors)}
-                />
-                <div className="space-y-2">
-                  <Label htmlFor="gender" className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Gender <span className="text-red-600 dark:text-red-400">*</span>
-                  </Label>
-                  <Select value={formData.gender} onValueChange={handleGenderChange}>
-                    <SelectTrigger 
-                      id="gender"
-                      className={getInputClassName('gender', validationErrors)}
-                    >
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {validationErrors.gender && (
-                    <p className="text-sm text-red-600 dark:text-red-400">{validationErrors.gender}</p>
-                  )}
-                </div>
-                <FormField
-                  id="nationality"
-                  label="Nationality"
-                  value={formData.nationality}
-                  onChange={handleFieldChange('nationality')}
-                  error={validationErrors.nationality}
-                  required
-                  placeholder="Enter nationality"
-                  className={getInputClassName('nationality', validationErrors)}
-                />
-                <FormField
-                  id="height"
-                  label="Height (cm)"
-                  type="number"
-                  value={formData.height}
-                  onChange={handleFieldChange('height')}
-                  error={validationErrors.height}
-                  required
-                  placeholder="Enter height in cm"
-                  min="0"
-                  max="300"
-                  step="0.1"
-                  className={getInputClassName('height', validationErrors)}
-                />
-                <FormField
-                  id="weight"
-                  label="Weight (kg)"
-                  type="number"
-                  value={formData.weight}
-                  onChange={handleFieldChange('weight')}
-                  error={validationErrors.weight}
-                  required
-                  placeholder="Enter weight in kg"
-                  min="0"
-                  max="500"
-                  step="0.1"
-                  className={getInputClassName('weight', validationErrors)}
-                />
-              </div>
-              
-              {bmi && (
-                <div className="rounded-lg bg-[#e0f7fa] dark:bg-blue-900/30 border-2 border-[#007bff]/30 dark:border-blue-400/30 p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    <span className="font-bold text-[#007bff] dark:text-blue-400">Calculated BMI:</span> {bmi}
-                  </p>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              id="name"
+              label="Full Name"
+              value={formData.name}
+              onChange={(value) => handleFieldChange('name', value)}
+              error={validationErrors.name}
+              required
+              placeholder="Enter full name"
+              className={getInputClassName('name', validationErrors)}
+              inputRef={nameRef}
+            />
+
+            <FormField
+              id="age"
+              label="Age"
+              value={formData.age}
+              onChange={(value) => handleFieldChange('age', value)}
+              error={validationErrors.age}
+              required
+              type="number"
+              min="0"
+              max="150"
+              placeholder="Enter age"
+              className={getInputClassName('age', validationErrors)}
+              inputRef={ageRef}
+            />
+
+            <div className="space-y-2">
+              <Label htmlFor="gender" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Gender <span className="text-red-600 dark:text-red-400">*</span>
+              </Label>
+              <Select value={formData.gender} onValueChange={(value) => handleFieldChange('gender', value)}>
+                <SelectTrigger 
+                  id="gender" 
+                  className={getInputClassName('gender', validationErrors)}
+                  aria-required="true"
+                  aria-invalid={!!validationErrors.gender}
+                  aria-describedby={validationErrors.gender ? 'gender-error' : undefined}
+                >
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {validationErrors.gender && (
+                <p id="gender-error" className="text-sm text-red-600 dark:text-red-400">{validationErrors.gender}</p>
               )}
             </div>
 
-            <Separator className="my-6" />
+            <FormField
+              id="nationality"
+              label="Nationality"
+              value={formData.nationality}
+              onChange={(value) => handleFieldChange('nationality', value)}
+              error={validationErrors.nationality}
+              required
+              placeholder="Enter nationality"
+              className={getInputClassName('nationality', validationErrors)}
+              inputRef={nationalityRef}
+            />
+          </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-[#5a9fd4] dark:text-blue-300 border-b-2 border-[#5a9fd4] dark:border-blue-300 pb-2">
-                Optional Information
-              </h3>
-              
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  id="phone"
-                  label="Phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleFieldChange('phone')}
-                  placeholder="Enter phone number"
-                  className="border-2 border-gray-300 dark:border-gray-600 focus:border-[#007bff] focus:ring-2 focus:ring-[#007bff]/20 transition-all"
-                />
-                <div className="space-y-2">
-                  <Label htmlFor="bloodGroup" className="text-sm font-medium text-gray-700 dark:text-gray-200">Blood Group</Label>
-                  <Select value={formData.bloodGroup} onValueChange={handleBloodGroupChange}>
-                    <SelectTrigger 
-                      id="bloodGroup"
-                      className="border-2 border-gray-300 dark:border-gray-600 focus:border-[#007bff] focus:ring-2 focus:ring-[#007bff]/20 transition-all"
-                    >
-                      <SelectValue placeholder="Select blood group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A+">A+</SelectItem>
-                      <SelectItem value="A-">A-</SelectItem>
-                      <SelectItem value="B+">B+</SelectItem>
-                      <SelectItem value="B-">B-</SelectItem>
-                      <SelectItem value="AB+">AB+</SelectItem>
-                      <SelectItem value="AB-">AB-</SelectItem>
-                      <SelectItem value="O+">O+</SelectItem>
-                      <SelectItem value="O-">O-</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <FormField
-                    id="address"
-                    label="Address"
-                    value={formData.address}
-                    onChange={handleFieldChange('address')}
-                    placeholder="Enter address"
-                    className="border-2 border-gray-300 dark:border-gray-600 focus:border-[#007bff] focus:ring-2 focus:ring-[#007bff]/20 transition-all"
-                  />
-                </div>
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              id="height"
+              label="Height (cm)"
+              value={formData.height}
+              onChange={(value) => handleFieldChange('height', value)}
+              error={validationErrors.height}
+              required
+              type="number"
+              step="0.1"
+              min="30"
+              max="300"
+              placeholder="Enter height in cm"
+              className={getInputClassName('height', validationErrors)}
+              inputRef={heightRef}
+            />
+
+            <FormField
+              id="weight"
+              label="Weight (kg)"
+              value={formData.weight}
+              onChange={(value) => handleFieldChange('weight', value)}
+              error={validationErrors.weight}
+              required
+              type="number"
+              step="0.1"
+              min="1"
+              max="500"
+              placeholder="Enter weight in kg"
+              className={getInputClassName('weight', validationErrors)}
+              inputRef={weightRef}
+            />
+
+            {bmi && (
+              <div className="md:col-span-2">
+                <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/30">
+                  <AlertDescription className="text-blue-800 dark:text-blue-200">
+                    <strong>Calculated BMI:</strong> {bmi} kg/m²
+                  </AlertDescription>
+                </Alert>
               </div>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              id="address"
+              label="Address"
+              value={formData.address}
+              onChange={(value) => handleFieldChange('address', value)}
+              placeholder="Enter address (optional)"
+              className="border-2 border-gray-300 dark:border-gray-600"
+            />
+
+            <FormField
+              id="phone"
+              label="Phone Number"
+              value={formData.phone}
+              onChange={(value) => handleFieldChange('phone', value)}
+              placeholder="Enter phone number (optional)"
+              className="border-2 border-gray-300 dark:border-gray-600"
+            />
+
+            <div className="space-y-2">
+              <Label htmlFor="bloodGroup" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Blood Group
+              </Label>
+              <Select value={formData.bloodGroup} onValueChange={(value) => handleFieldChange('bloodGroup', value)}>
+                <SelectTrigger id="bloodGroup" className="border-2 border-gray-300 dark:border-gray-600">
+                  <SelectValue placeholder="Select blood group (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A+">A+</SelectItem>
+                  <SelectItem value="A-">A-</SelectItem>
+                  <SelectItem value="B+">B+</SelectItem>
+                  <SelectItem value="B-">B-</SelectItem>
+                  <SelectItem value="AB+">AB+</SelectItem>
+                  <SelectItem value="AB-">AB-</SelectItem>
+                  <SelectItem value="O+">O+</SelectItem>
+                  <SelectItem value="O-">O-</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleClose}
               disabled={addPatient.isPending}
-              className="border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+              className="border-gray-300 dark:border-gray-600"
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              onClick={handleSubmit}
               disabled={addPatient.isPending}
-              className="bg-[#007bff] hover:bg-[#0056b3] text-white font-medium px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="bg-[#007bff] hover:bg-[#0056b3] text-white"
             >
               {addPatient.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding Patient...
+                  Adding...
                 </>
               ) : (
                 'Add Patient'
               )}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

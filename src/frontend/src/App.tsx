@@ -138,7 +138,7 @@ function AppContent() {
           />
         )}
         {showProfileSetup ? (
-          <ProfileSetupModal />
+          <ProfileSetupModal open={showProfileSetup} />
         ) : (
           <Dashboard onModuleChange={setCurrentModule} currentModule={currentModule} />
         )}

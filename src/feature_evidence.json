@@ -2,12 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-prescriber-details-section-to-match-the-requested-prescriber-fields-and-labels-prefix-dropdown-options-must-display-exactly-dr-practitioner-nurse-and-pharmacist-fields-must-include-registration-number-address-mail-id-email-contact-number-and-specialization-and-these-values-must-be-saved-and-displayed-consistently-for-the-selected-patient",
-      "featureTitle": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
+      "featureId": "feature-replace-the-stubbed-interaction-check-hooks-with-real-client-side-react-query-queries-so-that-clicking-check-interactions-returns-and-displays-the-latest-results-based-on-the-current-manually-entered-inputs-for-drug-drug-multi-drug-drug-food-and-food-food",
+      "featureTitle": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
       "files": [
-        "frontend/src/components/CaseSummary.tsx",
-        "frontend/src/components/PrescriberDetailsSection.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/DrugInteractionsModule.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/services/localInteractionCheckService.ts"
       ],
       "components": [
         "authorization@3.0.0",
@@ -25,10 +25,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-tighten-prescriber-details-validation-so-the-prescriber-record-is-complete-require-non-empty-values-for-registration-number-address-contact-number-and-specialization-require-a-valid-email-format-for-mail-id-and-require-mail-id-to-be-provided-non-empty-validation-errors-must-be-shown-inline-and-prevent-saving",
-      "featureTitle": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
+      "featureId": "feature-implement-and-enforce-input-validation-for-manual-interaction-checks-across-drug-drug-drug-food-and-food-food-before-running-the-check-and-display-clear-english-validation-messages-in-the-module-when-validation-fails",
+      "featureTitle": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
       "files": [
-        "frontend/src/components/PrescriberDetailsSection.tsx"
+        "frontend/src/components/DrugInteractionsModule.tsx",
+        "frontend/src/services/localInteractionCheckService.ts"
       ],
       "components": [
         "authorization@3.0.0",
@@ -46,10 +47,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-audit-the-built-in-drug-database-so-every-drug-record-shown-in-the-ui-has-complete-core-fields-name-status-category-date-description-source-attribution-safety-ban-information-and-update-the-curated-datasets-as-needed-so-the-drug-list-details-are-fully-up-to-date-and-consistent",
-      "featureTitle": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
+      "featureId": "feature-ensure-that-interaction-results-shown-in-the-drug-interaction-module-are-computed-from-the-current-local-datasets-indexes-and-are-not-blocked-by-backend-availability-including-drug-drug-lookups-via-the-local-drug-drug-interaction-dataset-index-drug-food-lookups-via-the-drug-food-dataset-index-and-food-food-lookups-via-the-food-food-dataset-index",
+      "featureTitle": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
       "files": [
-        "frontend/src/components/DrugDetailsModal.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/services/localInteractionCheckService.ts"
       ],
       "components": [
         "authorization@3.0.0",
@@ -62,54 +64,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-perform-an-end-to-end-ui-review-of-the-patient-case-flow-patient-selection-case-entry-tabs-case-summary-specifically-to-ensure-prescriber-details-and-drug-database-modules-are-complete-consistent-and-user-facing-copy-is-clear-english-fix-any-broken-placeholder-behavior-encountered-in-these-areas-that-blocks-normal-use",
-      "featureTitle": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
-      "files": [
-        "frontend/src/components/CaseSummary.tsx",
-        "frontend/src/components/PrescriberDetailsSection.tsx"
-      ],
-      "components": [
-        "authorization@3.0.0",
-        "http-outcalls@3.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-apply-a-coherent-modern-clinical-visual-theme-across-the-affected-screens-prescriber-details-drug-list-details-case-summary-using-a-warm-neutral-palette-avoid-blue-purple-consistent-typography-and-spacing-without-changing-app-functionality",
-      "featureTitle": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
-      "files": [
-        "frontend/src/components/CaseSummary.tsx",
-        "frontend/src/components/DrugDetailsModal.tsx",
-        "frontend/src/components/PrescriberDetailsSection.tsx",
-        "frontend/src/index.css",
-        "frontend/tailwind.config.js"
-      ],
-      "components": [
-        "authorization@3.0.0",
-        "http-outcalls@3.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
+        "REQ-3"
       ],
       "confidence": "high"
     }

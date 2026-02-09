@@ -1,145 +1,81 @@
 {
   "kind": "build_request",
-  "title": "Expand and validate Prescriber Details + make Drug Database fully complete and up to date",
+  "title": "Fix Drug Interaction checker to show fully updated results after manual entry (Drug-Drug, Drug-Food, Food-Food)",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
+      "text": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-10"
         ],
         "quotes": [
-          "please check everything, add prescribers details like prefix  dropdown section add Dr., practitioner nurse, pharmacist, then registration number, address, mail id, contact number, specialization"
+          "In Drug interaction section when manually putting data and check Drug-Drug, Drug-Food and Food-Food interaction, when click on check interactions must show the fully up-dated results"
         ]
       },
       "acceptanceCriteria": [
-        "In the Prescriber Details UI, prefix is a dropdown and the visible option labels are exactly: \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\".",
-        "The Prescriber Details UI shows input fields for: Registration Number, Address, Mail ID (email), Contact Number, Specialization.",
-        "When a user saves Prescriber Details for a patient, leaving and returning to the patient shows the saved values (view mode and edit mode load the saved data).",
-        "User-facing labels use English and include \"Mail ID\" (not only \"Email Address\") for the email field."
+        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Drug tab, the results list updates to match the current input values (not previous inputs).",
+        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Food tab, the results list updates to match the current input values (not previous inputs).",
+        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Food-Food tab, the results list updates to match the current input values (not previous inputs).",
+        "The interaction hooks provide working loading and error states (isLoading/isPending/error) so the UI can show a spinner/skeleton and an error message when needed.",
+        "The query keys include the normalized input set(s) so re-checking after editing inputs always triggers a fresh computation and re-render."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
+      "text": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-6",
+          "msg-10"
         ],
         "quotes": [
-          "then registration number, address, mail id, contact number, specialization"
+          "please kindly check and fix it the drug interaction section when manually putting data and check in Drug-Drug, Drug-Food and Food-Food interaction, when click on check interactions must show the fully up dated results and do the validation process",
+          "In Drug interaction section when manually putting data and check Drug-Drug, Drug-Food and Food-Food interaction, when click on check interactions must show the fully up-dated results"
         ]
       },
       "acceptanceCriteria": [
-        "Attempting to save with any missing required field shows an inline error and the save mutation is not triggered.",
-        "Mail ID is required; saving with an empty Mail ID shows an inline error.",
-        "Mail ID must match an email pattern; saving with an invalid email shows an inline error.",
-        "Contact Number validation accepts phone-like input (digits/spaces/+/-/() ) and rejects clearly invalid input as it does today."
+        "Drug-Drug: If fewer than 2 medications are entered, show: \"Please enter at least two medications to check interactions.\" and do not run the check.",
+        "Drug-Drug: If duplicate drug names are entered (case/spacing/punctuation-insensitive), show: \"Please enter different medications. Duplicate drug names detected.\" and do not run the check.",
+        "Drug-Food: If no drug is entered or no food is entered, show a clear validation message (English) and do not run the check.",
+        "Drug-Food: If duplicate drugs or duplicate foods are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check.",
+        "Food-Food: If fewer than 2 foods are entered, show a clear validation message (English) and do not run the check.",
+        "Food-Food: If duplicate food names are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Ensure backend prescriber storage and API behavior supports the required Prescriber Details fields (prefix, full name, registration number, specialization, contact number, email, address) and does not allow saving empty strings for required fields; return a clear error message when invalid prescriber details are submitted.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "add prescribers details ... then registration number, address, mail id, contact number, specialization"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend rejects prescriber details submissions where any required field is an empty string (registrationNumber, specialization, contactNumber, email, address, fullName) with a clear English error message.",
-        "Backend continues to store and return prescriber details per patientId, and the frontend can still load/save without type mismatches.",
-        "No new canisters/services are introduced; changes stay within the existing single-actor backend."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
+      "text": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-10"
         ],
         "quotes": [
-          "check and add all the drug details and if you feel any thing require then please add them so it becomes fully up to date."
+          "when click on check interactions must show the fully up-dated results"
         ]
       },
       "acceptanceCriteria": [
-        "Drug list and Drug Details modal never crash due to missing/empty core drug fields; missing values display a consistent English fallback such as \"Not available\".",
-        "Banned drugs always display a clearly labeled \"Ban Reason & Safety Information\" section populated from the dataset (or a fallback if missing).",
-        "Curated drug dataset entries are updated so core fields are populated consistently (no empty string core fields) for records included in the shipped dataset.",
-        "Any normalization/deduplication does not remove banned entries in favor of approved entries when duplicates exist (banned must still win)."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "please check everything"
-        ]
-      },
-      "acceptanceCriteria": [
-        "No obvious broken states in Prescriber Details and Drug Database modules (loading, empty state, save state, error state all render correctly).",
-        "Case Summary displays the saved Prescriber Details for the patient without missing-field UI glitches.",
-        "Any user-facing text touched by this change is in English and consistent in terminology (e.g., \"Mail ID\" vs \"Email\")."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "please check everything"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Prescriber Details, Drug Database, and Case Summary sections share consistent heading styles, form spacing, and card styling.",
-        "Theme uses a warm neutral palette (e.g., off-white/stone/charcoal with a green or amber accent), and does not introduce blue/purple as the primary theme colors.",
-        "No changes to authentication or routing are required for the theme update."
+        "Drug-Drug results are produced from the local drug-drug interaction data source and are returned as an array of interaction cards (including \"No interaction data found...\" cards for missing pairs) that matches the pairings from the entered drugs.",
+        "Drug-Food results are produced from the local drug-food interaction dataset/index for each selected drug-food combination, returning a consistent result shape used by the existing UI cards.",
+        "Food-Food results are produced from the local food-food interaction dataset/index for each unique food pair entered, returning a consistent result shape used by the existing UI cards.",
+        "Performing checks does not require any Motoko/backend changes and works even if the actor is unavailable."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
-    "Only generate backend/migration.mo if a stable-state schema change is required for existing persisted data.",
-    "Do not edit files under frontend/src/components/ui or any other immutable paths listed in SYSTEM_CONTEXT.",
-    "Do not add third-party authentication; Internet Identity remains the only auth mechanism.",
-    "Do not add external databases or third-party drug data APIs; updates must use the existing built-in datasets/services."
+    "Do not modify any files under frontend/src/components/ui (Shadcn components are read-only and must be composed, not edited).",
+    "Do not edit frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts, or frontend/src/main.tsx (immutable paths)."
   ],
   "nonGoals": [
-    "Adding new export formats beyond the existing on-screen/export placeholder behavior.",
-    "Implementing real-time collaboration/chat features.",
-    "Integrating live CDSCO/MIMS/FDA/WHO APIs or web scraping for drug updates.",
-    "Adding new backend canisters or microservices."
+    "Adding new external APIs for interaction checking (use existing local datasets/services only).",
+    "Changing backend (Motoko) interaction logic or adding new canister methods unless discovered to be strictly necessary to fix stale UI updates."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

@@ -1,112 +1,66 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-09T10:19:56.928Z",
+  "generatedAt": "2026-02-09T12:10:24.132Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 6,
-    "implemented": 5,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
+        "summary": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/PrescriberDetailsSection.tsx",
-          "frontend/src/components/CaseSummary.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/services/localInteractionCheckService.ts",
+          "frontend/src/components/DrugInteractionsModule.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/PrescriberDetailsSection.tsx",
-          "frontend/src/components/CaseSummary.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/services/localInteractionCheckService.ts",
+          "frontend/src/components/DrugInteractionsModule.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
+        "summary": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/PrescriberDetailsSection.tsx"
+          "frontend/src/components/DrugInteractionsModule.tsx",
+          "frontend/src/services/localInteractionCheckService.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/PrescriberDetailsSection.tsx"
+          "frontend/src/components/DrugInteractionsModule.tsx",
+          "frontend/src/services/localInteractionCheckService.ts"
         ]
       },
       {
         "id": "REQ-3",
-        "summary": "Ensure backend prescriber storage and API behavior supports the required Prescriber Details fields (prefix, full name, registration number, specialization, contact number, email, address) and does not allow saving empty strings for required fields; return a clear error message when invalid prescriber details are submitted.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
+        "summary": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/DrugDetailsModal.tsx",
-          "frontend/src/components/DrugTableModule.tsx",
-          "frontend/src/data/curatedDrugDataset.ts",
-          "frontend/src/services/multiSourceDrugService.ts"
+          "frontend/src/services/localInteractionCheckService.ts",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/DrugDetailsModal.tsx"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/CaseEntry.tsx",
-          "frontend/src/components/PrescriberDetailsSection.tsx",
-          "frontend/src/components/CaseSummary.tsx",
-          "frontend/src/components/DrugTableModule.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/PrescriberDetailsSection.tsx",
-          "frontend/src/components/CaseSummary.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/tailwind.config.js",
-          "frontend/src/index.css",
-          "frontend/src/components/PrescriberDetailsSection.tsx",
-          "frontend/src/components/CaseSummary.tsx",
-          "frontend/src/components/DrugTableModule.tsx",
-          "frontend/src/components/DrugDetailsModal.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/tailwind.config.js",
-          "frontend/src/index.css",
-          "frontend/src/components/PrescriberDetailsSection.tsx",
-          "frontend/src/components/CaseSummary.tsx",
-          "frontend/src/components/DrugDetailsModal.tsx"
+          "frontend/src/services/localInteractionCheckService.ts",
+          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/CaseSummary.tsx",
-    "frontend/src/components/DrugDetailsModal.tsx",
-    "frontend/src/components/PrescriberDetailsSection.tsx",
+    "frontend/src/components/DrugInteractionsModule.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/index.css",
-    "frontend/tailwind.config.js",
+    "frontend/src/services/localInteractionCheckService.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
