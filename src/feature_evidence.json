@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-verification-workflow-that-runs-after-a-drug-list-refresh-update-to-confirm-that-adds-and-updates-were-applied-correctly-and-expose-the-verification-result-to-the-ui",
-      "featureTitle": "Add a verification workflow that runs after a drug-list refresh/update to confirm that adds and updates were applied correctly, and expose the verification result to the UI.",
+      "featureId": "feature-in-the-patient-registry-workflow-provide-a-prescriber-details-section-for-the-selected-patient-with-fields-prefix-dropdown-full-name-registration-number-address-mail-id-email-contact-number-and-specialization-and-ensure-it-is-reachable-from-the-patient-registry-tab-without-leaving-the-patient-context",
+      "featureTitle": "In the Patient Registry workflow, provide a Prescriber Details section for the selected patient with fields: Prefix (dropdown), Full Name, Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and ensure it is reachable from the Patient Registry tab without leaving the patient context.",
       "files": [
-        "frontend/src/components/DrugTableModule.tsx",
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/services/drugListVerification.ts"
+        "frontend/src/components/PrescriberDetailsSection.tsx"
       ],
       "components": [
         "authorization@3.0.0",
@@ -20,16 +18,16 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-drug-database-ui-to-reliably-render-the-entire-corresponding-dataset-in-the-all-drugs-approved-banned-tabs-with-client-side-search-category-filters-applied-to-the-full-list-not-a-partially-loaded-subset-if-the-list-is-large-implement-a-ui-strategy-pagination-or-virtualization-that-still-allows-viewing-the-full-list-while-preserving-existing-search-csv-export-and-the-drug-details-modal",
-      "featureTitle": "Update the Drug Database UI to reliably render the entire corresponding dataset in the All Drugs / Approved / Banned tabs, with client-side search/category filters applied to the full list (not a partially loaded subset). If the list is large, implement a UI strategy (pagination or virtualization) that still allows viewing the full list while preserving existing search, CSV export, and the drug details modal.",
+      "featureId": "feature-update-the-prescriber-prefix-dropdown-labeling-so-the-user-facing-value-for-prescriberprefix-practitionernurse-is-practitioner-nurse-not-nurse-and-ensure-all-user-facing-text-is-correctly-spelled-and-consistent-across-the-prescriber-details-ui-and-case-summary",
+      "featureTitle": "Update the Prescriber prefix dropdown labeling so the user-facing value for PrescriberPrefix.practitionerNurse is \"Practitioner Nurse\" (not \"Nurse\"), and ensure all user-facing text is correctly spelled and consistent across the Prescriber Details UI and Case Summary.",
       "files": [
-        "frontend/src/components/DrugTableModule.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/CaseSummary.tsx",
+        "frontend/src/components/PrescriberDetailsSection.tsx"
       ],
       "components": [
         "authorization@3.0.0",
@@ -42,7 +40,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-4"
+        "REQ-2"
       ],
       "confidence": "high"
     }

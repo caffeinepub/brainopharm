@@ -1,75 +1,98 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-09T16:13:09.094Z",
+  "generatedAt": "2026-02-09T16:37:59.616Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
+    "total": 7,
     "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Update the application’s curated drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
-        "status": "missing",
+        "summary": "In the Patient Registry workflow, provide a Prescriber Details section for the selected patient with fields: Prefix (dropdown), Full Name, Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and ensure it is reachable from the Patient Registry tab without leaving the patient context.",
+        "status": "implemented",
         "plannedFiles": [
-          "frontend/src/data/curatedDrugDataset.ts"
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseEntry.tsx"
         ],
-        "matchedFiles": []
+        "matchedFiles": [
+          "frontend/src/components/PrescriberDetailsSection.tsx"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Ensure backend drug query methods return complete datasets (no truncation): `getAllDrugs` returns all approved + banned drugs, and filtered endpoints (approved/banned) return the full correctly filtered lists, independent of any user profile state.",
+        "summary": "Update the Prescriber prefix dropdown labeling so the user-facing value for PrescriberPrefix.practitionerNurse is \"Practitioner Nurse\" (not \"Nurse\"), and ensure all user-facing text is correctly spelled and consistent across the Prescriber Details UI and Case Summary.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Implement backend support for saving and retrieving prescriber details per patient, including: (1) a query method to get prescriber details by patientId, and (2) an update method to save/replace prescriber details for a patientId, performing validation consistent with backend validation rules.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-3",
-        "summary": "Add a verification workflow that runs after a drug-list refresh/update to confirm that adds and updates were applied correctly, and expose the verification result to the UI.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/services/drugListVerification.ts",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/DrugTableModule.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/services/drugListVerification.ts",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/DrugTableModule.tsx"
-        ]
+        "id": "REQ-4",
+        "summary": "Persist prescriber details across canister upgrades by adding stable storage for the prescriber details map keyed by patientId, and add a conditional migration if required by the existing state layout.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-4",
-        "summary": "Update the Drug Database UI to reliably render the entire corresponding dataset in the All Drugs / Approved / Banned tabs, with client-side search/category filters applied to the full list (not a partially loaded subset). If the list is large, implement a UI strategy (pagination or virtualization) that still allows viewing the full list while preserving existing search, CSV export, and the drug details modal.",
-        "status": "implemented",
+        "id": "REQ-5",
+        "summary": "Review and update the drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
+        "status": "missing",
         "plannedFiles": [
+          "frontend/src/data/curatedDrugDataset.ts",
+          "frontend/src/components/DrugDetailsModal.tsx",
+          "frontend/src/components/DrugTableModule.tsx"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Add/ensure a post-refresh drug verification workflow exists that checks that drug list additions/updates were applied correctly (e.g., deduplication, required-field completeness, counts), and expose the latest verification result to the UI.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/services/drugListVerification.ts",
           "frontend/src/components/DrugTableModule.tsx",
           "frontend/src/hooks/useQueries.ts"
         ],
-        "matchedFiles": [
-          "frontend/src/components/DrugTableModule.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Perform an application review focused on Patient Registry + Drug Database screens and fix any issues that prevent the full datasets (patients/drugs) from loading and being usable (e.g., missing queries, partial rendering, broken filters/pagination), without introducing unrelated features.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/PatientManagement.tsx",
+          "frontend/src/components/CaseEntry.tsx",
+          "frontend/src/components/DrugTableModule.tsx"
+        ],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
     "build-request.json",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/DrugTableModule.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/services/drugListVerification.ts",
+    "frontend/src/components/CaseSummary.tsx",
+    "frontend/src/components/PrescriberDetailsSection.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

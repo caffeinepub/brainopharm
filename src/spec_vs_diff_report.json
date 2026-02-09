@@ -1,66 +1,86 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-09T16:13:09.090Z",
-  "summary": "Diff adds a client-side drug list verification utility and updates the Drug Database UI module with full-list filtering and pagination scaffolding, plus new query hooks for refresh+verify. However, there is no evidence that the curated drug dataset file was updated (REQ-1), nor clear evidence that backend drug query methods were fixed to prevent truncation (REQ-2). Several unrelated frontend features/UI changes are also indicated in the file summaries.",
+  "generatedAt": "2026-02-09T16:37:59.613Z",
+  "summary": "Prescriber Details UI pieces appear added/updated (including consistent \"Practitioner Nurse\" labeling in Case Summary) and new frontend hooks for a refresh+verify drug workflow are mentioned, but the diff evidence is insufficient to confirm backend prescriber storage/query + stable upgrade persistence, the drug dataset refresh itself, and the UI exposure of verification results. Several unrelated UI/features also appear to have been added/modified.",
   "missing_requirements": [
     {
-      "id": "REQ-1",
-      "requirement": "Update the curated drug dataset so the complete drug list is up to date and includes missing entries, with required fields and deterministic deduplication behavior.",
-      "reason": "The diff summary does not show any modification to `frontend/src/data/curatedDrugDataset.ts` contents (only a new import from it). Without a diff for that dataset file, there is no evidence the dataset itself was updated or that entries were added/changed to meet required fields and deduplication acceptance criteria.",
-      "evidence": [
-        "frontend/src/services/drugListVerification.ts (imports normalizeDrugName from curatedDrugDataset, but does not modify the dataset)",
-        "No diff entry shown for frontend/src/data/curatedDrugDataset.ts"
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "requirement": "Ensure backend drug query methods return complete datasets with correct filtering, independent of user profile state (no truncation in getAllDrugs/approved/banned results).",
-      "reason": "The `backend/main.mo` diff content shown is truncated and contains only type definitions in the excerpt; there is no evidence in the provided diff summary that `getAllDrugs` or other drug query methods were changed to address truncation or filtering correctness.",
-      "evidence": [
-        "backend/main.mo (truncated excerpt shows type declarations only; no getAllDrugs/approved/banned implementation changes visible)"
-      ]
-    },
-    {
       "id": "REQ-3",
-      "requirement": "A single user action triggers refresh/update of the drug dataset and then verification; verification results are exposed to the UI with success/failure and human-readable failure summary.",
-      "reason": "A verification utility exists and the UI imports it, and hooks are referenced, but the provided diff summary does not show the actual UI rendering of verification outcomes nor the backend portion of a combined refresh+verify workflow. The file summary claims new hooks exist, but the shown `useQueries.ts` excerpt is truncated before the drug-related additions.",
+      "requirement": "Backend support for saving and retrieving prescriber details per patient (query get by patientId returning optional; update save/replace with validation and clear error responses).",
+      "reason": "The diff evidence shows frontend hooks/components calling prescriber APIs, but the backend diff excerpt is truncated and does not show any prescriber details type, map storage, query method, or update method implementation/validation behavior.",
       "evidence": [
-        "frontend/src/services/drugListVerification.ts",
-        "frontend/src/components/DrugTableModule.tsx (imports verifyDrugList; uses useRefreshAndVerifyDrugTable/useGetLastDrugVerification, but the rendering/trigger behavior is truncated)",
-        "frontend/src/hooks/useQueries.ts (truncated; drug verification hooks not visible in excerpt)"
+        "backend/main.mo (truncated; only shows type declarations up to drug interaction types, no prescriber methods visible)",
+        "frontend/src/components/PrescriberDetailsSection.tsx (calls useGetPrescriberDetails/useSavePrescriberDetails)",
+        "frontend/src/components/CaseSummary.tsx (calls useGetPrescriberDetails)"
       ]
     },
     {
       "id": "REQ-4",
-      "requirement": "Preserve CSV export over all filtered rows (not just visible subset) when pagination/virtualization is used, and ensure drug details modal works for any item in the dataset.",
-      "reason": "Pagination is introduced (ITEMS_PER_PAGE = 50; currentPage state; pagination icons imported), and filtering is described as operating on the full list, but the truncated diff does not show CSV export logic or confirm that export uses all filtered rows rather than just the current page, nor does it confirm modal behavior for any dataset item under pagination.",
+      "requirement": "Persist prescriber details across canister upgrades using stable storage keyed by patientId and add conditional migration if required.",
+      "reason": "No stable variable/state layout changes or preupgrade/postupgrade hooks or migration file are shown in the diff summary; no backend/migration.mo was added.",
       "evidence": [
-        "frontend/src/components/DrugTableModule.tsx (pagination constants/state present; Download icon imported; remainder of implementation truncated)"
+        "backend/main.mo (truncated; no stable storage/migration evidence shown)",
+        "File diff summary (ADDED FILES: none; no backend/migration.mo)"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Update/expand the curated drug dataset so every drug record includes at minimum: name, status, date, category (when known), description, source, safetyInfo; use explicit English placeholders like \"Unknown\" when needed.",
+      "reason": "The diff summary does not show any drug dataset file changes or updates to drug records/seed data, nor evidence of placeholder handling in drug details views.",
+      "evidence": [
+        "File diff summary (modified files listed do not include any drug dataset/seed file)",
+        "frontend-file-summaries.txt (mentions hooks for verification, but not dataset content updates)"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Post-refresh drug verification workflow that runs after refresh/update, produces structured results with timestamp (total count, count by status, duplicate normalized names), and exposes latest result to UI (timestamp + pass/fail/warnings summary).",
+      "reason": "Frontend hook summaries mention new verification hooks, but the diff does not show backend verification implementation, structured result shape, or any UI component that displays the latest verification timestamp and pass/fail/warnings summary.",
+      "evidence": [
+        "frontend-file-summaries.txt (mentions useRefreshAndVerifyDrugTable/useGetLastDrugVerification)",
+        "backend/main.mo (truncated; no verification methods/results visible)",
+        "File diff summary (no dedicated UI component changes shown for displaying verification status)"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "requirement": "Review and fix issues preventing full datasets (patients/drugs) from loading/being usable; ensure Drug Database tabs render full dataset and filters apply to full list; no console errors in common flows.",
+      "reason": "There are general frontend optimizations mentioned (patient table memoization, dashboard changes), but no diff evidence specifically addresses Drug Database tabs rendering completeness, filter correctness, or elimination of runtime errors for the drug database flows.",
+      "evidence": [
+        "frontend-file-summaries.txt (mentions PatientManagement optimization; does not show Drug Database screen fixes)",
+        "File diff summary (no drug database page/component diffs shown)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Addition of a new 'Drug-Drug Interaction Database' tab and related interaction features (compute interactions, new services) beyond the requested drug list update/verification scope.",
-      "reason": "Not requested in REQ-1..REQ-4; file summary explicitly claims a new dashboard tab and interaction services/hooks.",
+      "description": "Added a new \"Drug-Drug Interaction Database\" tab and related functionality.",
+      "reason": "Not requested in any requirement/non-goal; BuildRequest focuses on prescriber details, drug dataset refresh, verification, and reliability fixes.",
       "evidence": [
-        "frontend-file-summaries.txt (Dashboard: \"nine primary tabs including new Drug-Drug Interaction Database tab\")",
-        "frontend/src/hooks/useQueries.ts (imports drugDrugInteractionService and localInteractionCheckService utilities in excerpt)"
+        "frontend-file-summaries.txt (frontend/src/pages/Dashboard.tsx: \"nine primary tabs including new Drug-Drug Interaction Database tab\")",
+        "backend/main.mo (truncated; includes extensive DrugInteraction-related types)"
       ]
     },
     {
-      "description": "WAVEBOT widget integration and performance behaviors like 'intelligent prefetch on hover'.",
-      "reason": "Not requested by any requirement; appears as additional feature work.",
+      "description": "Added/mentioned a WAVEBOT widget integration.",
+      "reason": "Not requested; unrelated feature addition beyond scope.",
       "evidence": [
-        "frontend-file-summaries.txt (Dashboard: \"WAVEBOT widget integration\", \"intelligent prefetch on hover\")"
+        "frontend-file-summaries.txt (frontend/src/pages/Dashboard.tsx: \"WAVEBOT widget integration\")"
       ]
     },
     {
-      "description": "Broad UI/UX redesign changes across Header/Footer/Login/Profile/Patient modules unrelated to drug dataset completeness, backend truncation, verification workflow, or Drug Database tab rendering.",
-      "reason": "Not requested in REQ-1..REQ-4; multiple components are described as being enhanced with new themes, branding, disclaimers, and validations.",
+      "description": "Introduced or expanded PDF export behavior in Case Summary (stub toast about integrating a PDF library).",
+      "reason": "Not requested as part of the BuildRequest; could be considered unrelated feature work.",
       "evidence": [
-        "frontend-file-summaries.txt (Header/Footer/LoginScreen/ProfileSetupModal/PatientManagement/etc. described as enhanced/optimized)"
+        "frontend/src/components/CaseSummary.tsx (handleExportPdf toast: \"PDF export functionality would integrate with a PDF generation library\")"
+      ]
+    },
+    {
+      "description": "Footer/header branding/theme changes and added academic disclaimer styling/theme updates.",
+      "reason": "Not requested by the BuildRequest (which focuses on prescriber/drugs/verification/reliability), and may be unrelated UI work.",
+      "evidence": [
+        "frontend-file-summaries.txt (frontend/src/components/Footer.tsx: theme and disclaimer text updates)",
+        "frontend-file-summaries.txt (frontend/src/components/Header.tsx: branding/profile loading behavior changes)"
       ]
     }
   ],
@@ -68,9 +88,8 @@
   "changed_files": [
     "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/DrugTableModule.tsx",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/services/drugListVerification.ts",
+    "frontend/src/components/CaseSummary.tsx",
+    "frontend/src/components/PrescriberDetailsSection.tsx",
     "project_state.json"
   ]
 }

@@ -809,7 +809,10 @@ actor {
     };
   };
 
-  public query func getAllDrugsFromStore() : async [Drug] {
+  public query ({ caller }) func getAllDrugsFromStore() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view drugs");
+    };
     drugTableStore.values().toArray();
   };
 
@@ -820,14 +823,20 @@ actor {
     drugTableStore.add(drug.name, drug);
   };
 
-  public query func searchDrugs(searchQuery : Text) : async [Drug] {
+  public query ({ caller }) func searchDrugs(searchQuery : Text) : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can search drugs");
+    };
     let filtered = drugTableStore.toArray().filter(func(entry) {
       entry.1.name.contains(#text searchQuery);
     });
     filtered.map(func((name, drug)) { drug });
   };
 
-  public query func getCategorizedDrugs() : async CategorizedDrugs {
+  public query ({ caller }) func getCategorizedDrugs() : async CategorizedDrugs {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view categorized drugs");
+    };
     let antibiotics = List.empty<DrugWithCategory>();
     let painkillers = List.empty<DrugWithCategory>();
     let fdcs = List.empty<DrugWithCategory>();
@@ -909,7 +918,10 @@ actor {
     filtered.map(func((name, drug)) { drug });
   };
 
-  public query func getFilteredDrugs(status : ?DrugStatus) : async [Drug] {
+  public query ({ caller }) func getFilteredDrugs(status : ?DrugStatus) : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view filtered drugs");
+    };
     switch (status) {
       case (?drugStatus) { filterDrugsByStatus(drugStatus) };
       case (null) { drugTableStore.values().toArray() };
@@ -962,19 +974,31 @@ actor {
     verificationResult;
   };
 
-  public query func getLastDrugVerification() : async ?DrugVerificationResult {
+  public query ({ caller }) func getLastDrugVerification() : async ?DrugVerificationResult {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view drug verification results");
+    };
     lastDrugVerification;
   };
 
-  public query func getAllDrugs() : async [Drug] {
+  public query ({ caller }) func getAllDrugs() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view all drugs");
+    };
     drugTableStore.values().toArray();
   };
 
-  public query func getApprovedDrugs() : async [Drug] {
+  public query ({ caller }) func getApprovedDrugs() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view approved drugs");
+    };
     getDrugsByStatus(#approved);
   };
 
-  public query func getBannedDrugs() : async [Drug] {
+  public query ({ caller }) func getBannedDrugs() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view banned drugs");
+    };
     getDrugsByStatus(#banned);
   };
 

@@ -1,69 +1,128 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Update curated drug dataset and add post-refresh verification with full-list rendering",
+  "title": "Prescriber Details UI + drug dataset refresh and verification visibility",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Update the curated drug dataset to be complete, up to date, type-safe, and deterministically deduplicated.",
+      "summary": "Ensure Prescriber Details section is available within the selected-patient context in Patient Registry, with all requested fields and English labels.",
       "acceptanceCriteria": [
-        "`frontend/src/data/curatedDrugDataset.ts` contains the updated complete dataset (no build/type errors).",
-        "All entries in the dataset conform to the `Drug` type (including valid `DrugStatus` and `DrugSource` variants).",
-        "Duplicate drug names are deterministically deduplicated using the existing `deduplicateDrugs` utility rules (banned > approved; newer date > older date)."
+        "From the Patient Registry area, when a patient is selected, there is a visible way to open/view the Prescriber Details form for that patient.",
+        "The Prescriber Details form contains the requested fields and uses English labels (e.g., \"Mail ID\", \"Registration Number\", \"Specialization\").",
+        "Prefix is a dropdown with exactly these user-facing options: \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\"."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
+          "operation": "modify",
+          "description": "Update the Prescriber Details form to match the required field set/labels, keep it scoped to the selected patient context, and ensure required-field validation + focus behavior works reliably (avoid using stale error state when focusing). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/CaseEntry.tsx",
+          "operation": "modify",
+          "description": "Confirm/adjust the Patient Registry selected-patient workflow so the Prescriber Details section remains reachable via the existing in-context tabs (without navigating away from the selected patient). Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Standardize prescriber prefix labeling across the Prescriber Details UI and Case Summary (use “Practitioner Nurse”, not “Nurse”).",
+      "acceptanceCriteria": [
+        "The Prescriber Details prefix dropdown shows \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\" as the selectable labels.",
+        "Anywhere the prefix is displayed (including the case summary view), the label \"Practitioner Nurse\" is used (and not shortened to \"Nurse\")."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
+          "operation": "modify",
+          "description": "Update PrescriberPrefix.practitionerNurse user-facing label to \"Practitioner Nurse\" (not \"Nurse\"); ensure dropdown shows exactly the three required options and that any helper label formatting functions return consistent spelling. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/CaseSummary.tsx",
+          "operation": "modify",
+          "description": "Audit prefix label rendering in the case summary and ensure it remains consistent with the Prescriber Details UI (\"Practitioner Nurse\" everywhere). Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Refresh/expand the curated drug dataset so every drug entry has the minimum required fields and drug details UI never shows missing/undefined values.",
+      "acceptanceCriteria": [
+        "The curated dataset used by the app is updated/expanded, and each entry conforms to the minimum required fields: name, status, date, category, description, source, safetyInfo.",
+        "Drug details views (e.g., the drug details modal) have no missing/undefined values for the above minimum fields; if a field is unknown, it is represented as an explicit, user-friendly placeholder in English (e.g., \"Unknown\")."
       ],
       "file_operations": [
         {
           "path": "frontend/src/data/curatedDrugDataset.ts",
           "operation": "modify",
-          "description": "Update/expand `curatedDrugDataset` so every record includes required fields (`name`, `status`, `date`, `category` when known, `description`, `source`, `safetyInfo`) and aligns with `Drug`, `DrugStatus`, and `DrugSource` types. Ensure exported dataset is deterministically deduplicated using existing `deduplicateDrugs` rules (banned > approved; newer date > older date)."
+          "description": "Review and update/expand the curated drug dataset so each drug record includes the minimum required fields (name, status, date, category when known, description, source, safetyInfo). Where data is unknown, normalize to explicit English placeholders (e.g., \"Unknown\") rather than leaving fields empty/undefined. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/DrugDetailsModal.tsx",
+          "operation": "modify",
+          "description": "Ensure drug details display never renders missing/undefined values for required fields; align placeholders to \"Unknown\" (per requirement) and keep formatting robust for empty strings. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Ensure drug table and CSV export use the same user-friendly placeholders (\"Unknown\") for required fields when unknown, preventing blank/undefined output. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-3",
-      "summary": "Add a single-action refresh + verification workflow and show verification results in the Drug Database UI.",
+      "id": "REQ-6",
+      "summary": "Ensure a post-refresh drug verification workflow runs after refresh and expose the latest verification result (timestamp + pass/fail/warnings + required metrics) in the UI.",
       "acceptanceCriteria": [
-        "A single user action (or existing refresh action) triggers: (1) update/refresh of the drug dataset and (2) a verification step.",
-        "Verification checks at minimum: total count > 0, no empty `name` values, no invalid/missing `status`, and no duplicate drugs when normalized by the same rules used in the curated dataset.",
-        "The UI shows a clear success/failure outcome for verification, and on failure provides a human-readable summary (English) of what failed (e.g., duplicate count, invalid entries count)."
+        "There is a backend-accessible or frontend-driven verification step that runs after a drug list refresh/update and produces a structured verification result including a timestamp.",
+        "The UI shows the latest verification timestamp and a clear pass/fail or warnings summary (English) that helps confirm the list is fully loaded and consistent.",
+        "Verification includes at least: total drug count, count by status (approved/banned), and detection of duplicate normalized names."
       ],
       "file_operations": [
         {
           "path": "frontend/src/services/drugListVerification.ts",
-          "operation": "create",
-          "description": "Create a client-side drug-list verification helper that can validate a `Drug[]` using the same normalization/deduplication rules as `frontend/src/data/curatedDrugDataset.ts` (e.g., use `normalizeDrugName` / `deduplicateDrugs`). It must report a boolean pass/fail plus an English summary including at least: total count, empty-name count, invalid/missing-status count, and duplicate-normalized-name count."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add React Query hooks to support the post-refresh verification workflow: a mutation that calls the backend capability `refreshAndVerifyDrugTable()` and a query for `getLastDrugVerification()`. Ensure the mutation invalidates/refetches the drug list query (e.g., `['allDrugs']`) and the last verification query so the UI updates immediately after a refresh+verify completes."
+          "description": "Extend client-side drug list verification to include the required metrics: total count, count by status (approved/banned), and duplicate detection using normalized names; return a structured report suitable for UI display with an English pass/fail or warnings summary. Verify the component's usage instructions before implementing."
         },
         {
           "path": "frontend/src/components/DrugTableModule.tsx",
           "operation": "modify",
-          "description": "Wire the existing Refresh user action to trigger refresh+verification (single action) by using the new mutation hook. After completion, run the client-side verification helper over the returned `allDrugs` (or the currently fetched list) and render a clear success/failure outcome in the UI. On failure, display a concise English summary of what failed (duplicate count, invalid entries count, etc.). Keep UI text in English and do not edit any files under `frontend/src/components/ui`."
+          "description": "Enhance the Drug Database verification UI to display the latest verification timestamp, a clear pass/fail or warnings summary, and the required verification metrics (total count, approved/banned counts, duplicate normalized name detection). Ensure it reflects the latest backend-provided verification result and/or the client-side verification report after refresh. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Wire/adjust React Query hooks usage as needed so the UI can reliably fetch and display the latest verification result after refresh (e.g., ensure relevant queries are invalidated/refetched and that actor availability gating does not prevent rendering). Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-4",
-      "summary": "Ensure Drug Database renders the entire dataset per tab and uses pagination/virtualization so search, filters, CSV export, and details modal work across the full list.",
+      "id": "REQ-7",
+      "summary": "Review Patient Registry and Drug Database screens and fix issues that prevent full datasets (patients/drugs) from loading and being usable.",
       "acceptanceCriteria": [
-        "The Drug Database module renders all items returned by the backend for each tab (All/Approved/Banned), without silently dropping items due to performance limits.",
-        "Search and category filtering operate over the full fetched dataset.",
-        "CSV export includes all currently filtered rows (not just the visible subset, if pagination/virtualization is used).",
-        "Drug details modal continues to open and display details for any item in the dataset."
+        "Patient Registry patient list loads reliably and selecting a patient consistently loads associated modules (labs/medications/ADR/prescriber/summary).",
+        "Drug Database tabs (All/Approved/Banned) reliably render the full corresponding dataset and search/category filters apply to the full list (not a partially loaded subset).",
+        "No runtime errors in console during common flows: select patient, open prescriber tab, save prescriber details, open drug database, open drug details modal."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/DrugTableModule.tsx",
-          "operation": "modify",
-          "description": "Implement a large-list UI strategy using client-side pagination (or virtualization) applied after full-list filtering: (1) compute `filteredDrugs` over the full fetched dataset, (2) derive `visibleDrugs` for rendering only (page slice), and (3) keep CSV export based on the full `filteredDrugs` (not the visible slice). Ensure the modal still opens for any rendered row and continues to show correct details."
-        },
-        {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure Drug Database list-fetching hooks remain independent of profile-loading state and are configured to fetch the complete drug list (e.g., keep `useGetAllDrugs` enabled based on actor availability, with appropriate caching/stale times). If needed for UI correctness, add/select a dedicated query key for the all-drugs dataset used by the Drug Database module."
+          "description": "Fix patient-selection loading reliability by ensuring useGetPatient exposes accurate loading state tied to the underlying patients query (avoid false \"Patient not found\" states while patient data is still loading). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/PatientManagement.tsx",
+          "operation": "modify",
+          "description": "Audit and fix any Patient Registry list/selection issues that can block full patient dataset usability (e.g., selection state edge cases, rendering guards, or errors during list refresh), without adding unrelated features. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/CaseEntry.tsx",
+          "operation": "modify",
+          "description": "Ensure selecting a patient consistently renders all associated modules (labs/medications/ADR/prescriber/summary) without transient errors; align with corrected loading states from hooks. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Audit and fix any Drug Database issues that could lead to partial rendering or filters/search only applying to a subset (ensure filtering is always applied to the full dataset before pagination, and verify tab switching/search/category filters reset pagination safely). Verify the component's usage instructions before implementing."
         }
       ]
     }

@@ -64,7 +64,7 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
     }
 
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = 'Mail ID is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = 'Invalid email format';
     }
@@ -114,7 +114,7 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
       case PrescriberPrefix.doctor:
         return 'Dr.';
       case PrescriberPrefix.practitionerNurse:
-        return 'Nurse';
+        return 'Practitioner Nurse';
       case PrescriberPrefix.pharmacist:
         return 'Pharmacist';
       default:
@@ -161,8 +161,8 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                 <SelectValue placeholder="Select prefix" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={PrescriberPrefix.doctor}>Dr. (Doctor)</SelectItem>
-                <SelectItem value={PrescriberPrefix.practitionerNurse}>Nurse (Practitioner Nurse)</SelectItem>
+                <SelectItem value={PrescriberPrefix.doctor}>Dr.</SelectItem>
+                <SelectItem value={PrescriberPrefix.practitionerNurse}>Practitioner Nurse</SelectItem>
                 <SelectItem value={PrescriberPrefix.pharmacist}>Pharmacist</SelectItem>
               </SelectContent>
             </Select>
@@ -228,7 +228,7 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
                   setErrors((prev) => ({ ...prev, specialization: '' }));
                 }
               }}
-              placeholder="Enter specialization"
+              placeholder="Enter specialization (e.g., Cardiology, General Medicine)"
               aria-required="true"
               aria-invalid={!!errors.specialization}
               aria-describedby={errors.specialization ? 'specialization-error' : undefined}

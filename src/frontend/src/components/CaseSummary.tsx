@@ -42,30 +42,18 @@ export default function CaseSummary({ patientId }: CaseSummaryProps) {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card className="border-stone-200 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-900/50">
-        <CardContent className="py-8">
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent dark:border-emerald-500"></div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Loading summary...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!patient) {
-    return (
-      <Card className="border-stone-200 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-900/50">
-        <CardContent className="py-8 text-center">
-          <p className="text-stone-600 dark:text-stone-400">No data available</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const formatDate = (timestamp: bigint) => {
+    try {
+      const date = new Date(Number(timestamp) / 1000000);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Not available';
+    }
+  };
 
   const getBmiCategory = (bmi: number) => {
     if (bmi < 18.5) return { label: 'Underweight', variant: 'secondary' as const };
@@ -74,34 +62,54 @@ export default function CaseSummary({ patientId }: CaseSummaryProps) {
     return { label: 'Obese', variant: 'destructive' as const };
   };
 
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-sm text-muted-foreground">Loading case summary...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-muted-foreground">Patient not found</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const bmiCategory = getBmiCategory(patient.bmi);
 
   return (
     <div className="space-y-6">
-      <Card className="border-stone-200 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-900/50">
+      <Card className="bg-gradient-to-br from-stone-50 to-emerald-50 dark:from-stone-950 dark:to-emerald-950 border-stone-200 dark:border-stone-800">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-stone-900 dark:text-stone-100">Case Summary</CardTitle>
-              <CardDescription className="text-stone-600 dark:text-stone-400">Complete clinical overview for the selected patient</CardDescription>
+              <CardTitle className="text-2xl text-stone-900 dark:text-stone-100">Case Summary</CardTitle>
+              <CardDescription className="text-stone-600 dark:text-stone-400">
+                Complete clinical overview for {patient.name}
+              </CardDescription>
             </div>
-            <Button onClick={handleExportPdf} variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950">
-              <Download className="mr-2 h-4 w-4" />
+            <Button onClick={handleExportPdf} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
               Export PDF
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Patient Demographics */}
           <div>
-            <div className="mb-3 flex items-center gap-2">
-              <User className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
-              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Patient Information</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <User className="h-5 w-5 text-stone-700 dark:text-stone-300" />
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Patient Demographics</h3>
             </div>
-            <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-950 sm:grid-cols-2">
-              <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400">Patient ID</p>
-                <p className="font-mono text-sm text-stone-900 dark:text-stone-100">{patient.patientId}</p>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 bg-white dark:bg-stone-900 p-4 rounded-lg border border-stone-200 dark:border-stone-800">
               <div>
                 <p className="text-sm text-stone-600 dark:text-stone-400">Name</p>
                 <p className="font-medium text-stone-900 dark:text-stone-100">{patient.name}</p>
@@ -131,81 +139,100 @@ export default function CaseSummary({ patientId }: CaseSummaryProps) {
                   <p className="text-stone-900 dark:text-stone-100">{patient.bloodGroup}</p>
                 </div>
               )}
-            </div>
-          </div>
-
-          <Separator className="bg-stone-200 dark:bg-stone-800" />
-
-          <div>
-            <div className="mb-3 flex items-center gap-2">
-              <UserCog className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
-              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Prescriber Details</h3>
-            </div>
-            {prescriberDetails ? (
-              <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-950 sm:grid-cols-2">
+              {patient.phone && (
                 <div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">Prefix</p>
-                  <p className="font-medium text-stone-900 dark:text-stone-100">{getPrefixLabel(prescriberDetails.prefix)}</p>
+                  <p className="text-sm text-stone-600 dark:text-stone-400">Phone</p>
+                  <p className="text-stone-900 dark:text-stone-100">{patient.phone}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">Full Name</p>
-                  <p className="font-medium text-stone-900 dark:text-stone-100">{prescriberDetails.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">Registration Number</p>
-                  <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.registrationNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">Specialization</p>
-                  <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.specialization}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">Contact Number</p>
-                  <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.contactNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">Mail ID</p>
-                  <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.email}</p>
-                </div>
+              )}
+              {patient.address && (
                 <div className="sm:col-span-2">
                   <p className="text-sm text-stone-600 dark:text-stone-400">Address</p>
-                  <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.address}</p>
+                  <p className="text-stone-900 dark:text-stone-100">{patient.address}</p>
                 </div>
-              </div>
-            ) : (
-              <p className="text-sm text-stone-600 dark:text-stone-400">No prescriber details recorded for this patient.</p>
-            )}
+              )}
+            </div>
           </div>
 
           <Separator className="bg-stone-200 dark:bg-stone-800" />
 
+          {/* Prescriber Details */}
+          {prescriberDetails && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <UserCog className="h-5 w-5 text-stone-700 dark:text-stone-300" />
+                  <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Prescriber Details</h3>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 bg-white dark:bg-stone-900 p-4 rounded-lg border border-stone-200 dark:border-stone-800">
+                  <div>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Name</p>
+                    <p className="font-medium text-stone-900 dark:text-stone-100">
+                      {getPrefixLabel(prescriberDetails.prefix)} {prescriberDetails.fullName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Registration Number</p>
+                    <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.registrationNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Specialization</p>
+                    <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.specialization}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Contact Number</p>
+                    <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.contactNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Mail ID</p>
+                    <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.email}</p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Address</p>
+                    <p className="text-stone-900 dark:text-stone-100">{prescriberDetails.address}</p>
+                  </div>
+                </div>
+              </div>
+              <Separator className="bg-stone-200 dark:bg-stone-800" />
+            </>
+          )}
+
+          {/* Lab Results */}
           <div>
-            <div className="mb-3 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Lab Results</h3>
             </div>
-            {labResults.length > 0 ? (
+            {labResults.length === 0 ? (
+              <p className="text-sm text-stone-600 dark:text-stone-400 italic">No lab results recorded</p>
+            ) : (
               <div className="space-y-3">
                 {labResults.map((lab) => (
-                  <div key={lab.labResultsId} className="rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-950">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {lab.uricAcid !== undefined && (
+                  <div
+                    key={lab.labResultsId}
+                    className="bg-white dark:bg-stone-900 p-4 rounded-lg border border-stone-200 dark:border-stone-800"
+                  >
+                    <p className="text-xs text-stone-500 dark:text-stone-500 mb-2">
+                      {formatDate(lab.timestamp)}
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {lab.uricAcid !== undefined && lab.uricAcid !== null && (
                         <div>
                           <p className="text-sm text-stone-600 dark:text-stone-400">Uric Acid</p>
                           <p className="font-medium text-stone-900 dark:text-stone-100">{lab.uricAcid} mg/dL</p>
                         </div>
                       )}
-                      {lab.creatinine !== undefined && (
+                      {lab.creatinine !== undefined && lab.creatinine !== null && (
                         <div>
                           <p className="text-sm text-stone-600 dark:text-stone-400">Creatinine</p>
                           <p className="font-medium text-stone-900 dark:text-stone-100">{lab.creatinine} mg/dL</p>
                         </div>
                       )}
-                      {lab.bloodPressureSystolic !== undefined && lab.bloodPressureDiastolic !== undefined && (
+                      {lab.bloodPressureSystolic !== undefined && lab.bloodPressureSystolic !== null && (
                         <div>
                           <p className="text-sm text-stone-600 dark:text-stone-400">Blood Pressure</p>
                           <p className="font-medium text-stone-900 dark:text-stone-100">
-                            {Number(lab.bloodPressureSystolic)}/{Number(lab.bloodPressureDiastolic)} mmHg
+                            {Number(lab.bloodPressureSystolic)}/{Number(lab.bloodPressureDiastolic || 0)} mmHg
                           </p>
                         </div>
                       )}
@@ -213,24 +240,28 @@ export default function CaseSummary({ patientId }: CaseSummaryProps) {
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-stone-600 dark:text-stone-400">No lab results recorded</p>
             )}
           </div>
 
           <Separator className="bg-stone-200 dark:bg-stone-800" />
 
+          {/* Medications */}
           <div>
-            <div className="mb-3 flex items-center gap-2">
-              <Pill className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+            <div className="flex items-center gap-2 mb-3">
+              <Pill className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Medications</h3>
             </div>
-            {medications.length > 0 ? (
+            {medications.length === 0 ? (
+              <p className="text-sm text-stone-600 dark:text-stone-400 italic">No medications recorded</p>
+            ) : (
               <div className="space-y-3">
                 {medications.map((med) => (
-                  <div key={med.medicationId} className="rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-950">
-                    <p className="font-medium text-stone-900 dark:text-stone-100">{med.name}</p>
-                    <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                  <div
+                    key={med.medicationId}
+                    className="bg-white dark:bg-stone-900 p-4 rounded-lg border border-stone-200 dark:border-stone-800"
+                  >
+                    <p className="font-medium text-stone-900 dark:text-stone-100 mb-2">{med.name}</p>
+                    <div className="grid gap-2 sm:grid-cols-2 text-sm">
                       {med.dosage && (
                         <div>
                           <span className="text-stone-600 dark:text-stone-400">Dosage: </span>
@@ -243,36 +274,64 @@ export default function CaseSummary({ patientId }: CaseSummaryProps) {
                           <span className="text-stone-900 dark:text-stone-100">{med.frequency}</span>
                         </div>
                       )}
+                      {med.startDate && (
+                        <div>
+                          <span className="text-stone-600 dark:text-stone-400">Start: </span>
+                          <span className="text-stone-900 dark:text-stone-100">{formatDate(med.startDate)}</span>
+                        </div>
+                      )}
+                      {med.endDate && (
+                        <div>
+                          <span className="text-stone-600 dark:text-stone-400">End: </span>
+                          <span className="text-stone-900 dark:text-stone-100">{formatDate(med.endDate)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-stone-600 dark:text-stone-400">No medications recorded</p>
             )}
           </div>
 
           <Separator className="bg-stone-200 dark:bg-stone-800" />
 
+          {/* Adverse Drug Reactions */}
           <div>
-            <div className="mb-3 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-5 w-5 text-amber-700 dark:text-amber-300" />
               <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Adverse Drug Reactions</h3>
             </div>
-            {adrs.length > 0 ? (
+            {adrs.length === 0 ? (
+              <p className="text-sm text-stone-600 dark:text-stone-400 italic">No ADRs recorded</p>
+            ) : (
               <div className="space-y-3">
                 {adrs.map((adr) => (
-                  <div key={adr.adrId} className="rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-950">
-                    <div className="mb-2 flex items-center justify-between">
+                  <div
+                    key={adr.adrId}
+                    className="bg-white dark:bg-stone-900 p-4 rounded-lg border border-amber-200 dark:border-amber-800"
+                  >
+                    <div className="flex items-start justify-between mb-2">
                       <p className="font-medium text-stone-900 dark:text-stone-100">{adr.suspectedDrug}</p>
-                      <Badge variant={adr.severity === 'Severe' ? 'destructive' : 'secondary'}>{adr.severity}</Badge>
+                      <Badge
+                        variant={
+                          adr.severity.toLowerCase() === 'severe'
+                            ? 'destructive'
+                            : adr.severity.toLowerCase() === 'moderate'
+                            ? 'default'
+                            : 'secondary'
+                        }
+                      >
+                        {adr.severity}
+                      </Badge>
                     </div>
-                    <p className="text-sm text-stone-700 dark:text-stone-300">{adr.description}</p>
+                    <p className="text-sm text-stone-700 dark:text-stone-300 mb-2">{adr.description}</p>
+                    <div className="text-xs text-stone-500 dark:text-stone-500">
+                      {adr.onsetDate && <span>Onset: {formatDate(adr.onsetDate)} • </span>}
+                      <span>Reported: {formatDate(adr.timestamp)}</span>
+                    </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-stone-600 dark:text-stone-400">No adverse drug reactions recorded</p>
             )}
           </div>
         </CardContent>
