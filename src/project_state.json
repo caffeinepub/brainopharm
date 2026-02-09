@@ -1,111 +1,48 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 9,
-  "summary": "BRAINOPHARM project: web app with authentication and a Drug Interaction section; user requests making the Drug-Drug Interaction workflow functional with multi-drug input and AI-powered interaction/safety results.",
-  "architectural_notes": [
-    "Drug-drug interaction results should be generated via external LLM services (e.g., ChatGPT and/or Perplexity) and returned as structured safety/interaction output for multiple entered drugs.",
-    "If backend interaction data is missing/empty, call external LLM services (ChatGPT/Perplexity) to generate structured interaction/safety content so the UI does not render blank or all 'Not Available' fields."
-  ],
-  "known_issues": [
-    "Drug Interaction tab / 'Check Interactions' flow currently not working as expected (user cannot add multiple drugs and get interaction details).",
-    "When entering 3 drug names, interaction results render with all fields as 'Not Available' instead of populated interaction details.",
-    "Regression: Drug Interaction results now show almost nothing/blank in the UI; previously it rendered 'Not Available' placeholders. User needs accurate populated interaction results via ChatGPT/Perplexity."
-  ],
-  "isFixRequest": true,
+  "projectStateVersion": 3,
+  "summary": "Build/update an application that manages prescriber information and maintains an up-to-date drug details database.",
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-make-the-drug-interaction-tab-workflow-fully-functional-for-2-4-manually-entered-drug-names-when-the-user-enters-drug-1-drug-4-with-at-least-2-non-empty-unique-names-and-clicks-check-interaction-the-app-must-fetch-results-and-render-an-interaction-report-for-all-unique-pairs-among-the-entered-drugs",
-      "title": "Make the Drug Interaction tab workflow fully functional for 2–4 manually entered drug names: when the user enters Drug 1–Drug 4 (with at least 2 non-empty unique names) and clicks \"Check Interaction\", the app must fetch results and render an interaction report for all unique pairs among the entered drugs.",
+      "id": "feature-update-the-prescriber-details-section-to-match-the-requested-prescriber-fields-and-labels-prefix-dropdown-options-must-display-exactly-dr-practitioner-nurse-and-pharmacist-fields-must-include-registration-number-address-mail-id-email-contact-number-and-specialization-and-these-values-must-be-saved-and-displayed-consistently-for-the-selected-patient",
+      "title": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-extend-the-multi-drug-interaction-output-shown-in-the-ui-to-include-clinically-oriented-safety-details-for-each-drug-pair-including-interaction-description-likely-reactions-clinical-effects-toxicity-risk-qualitative-level-and-clear-management-recommendations-also-add-a-dedicated-section-for-special-populations-considerations-at-minimum-pregnancy-lactation-pediatrics-geriatrics",
-      "title": "Extend the multi-drug interaction output shown in the UI to include clinically oriented safety details for each drug pair, including: interaction description, likely reactions/clinical effects, toxicity risk (qualitative level), and clear management recommendations; also add a dedicated section for \"Special populations\" considerations (at minimum: pregnancy, lactation, pediatrics, geriatrics).",
+      "id": "feature-tighten-prescriber-details-validation-so-the-prescriber-record-is-complete-require-non-empty-values-for-registration-number-address-contact-number-and-specialization-require-a-valid-email-format-for-mail-id-and-require-mail-id-to-be-provided-non-empty-validation-errors-must-be-shown-inline-and-prevent-saving",
+      "title": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-implement-a-most-relevant-precise-summary-section-at-the-top-of-the-results-that-synthesizes-overall-safety-risk-across-all-entered-drugs-highlighting-the-highest-severity-pair-s-and-the-top-actionable-recommendation-s",
-      "title": "Implement a \"most relevant, precise\" summary section at the top of the results that synthesizes overall safety risk across all entered drugs, highlighting the highest-severity pair(s) and the top actionable recommendation(s).",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-clear-user-facing-disclaimers-on-the-drug-interaction-results-stating-the-information-is-for-decision-support-only-and-not-a-substitute-for-professional-medical-judgment-and-that-users-should-verify-with-authoritative-sources",
-      "title": "Add clear user-facing disclaimers on the Drug Interaction results stating the information is for decision support only and not a substitute for professional medical judgment, and that users should verify with authoritative sources.",
+      "id": "feature-audit-the-built-in-drug-database-so-every-drug-record-shown-in-the-ui-has-complete-core-fields-name-status-category-date-description-source-attribution-safety-ban-information-and-update-the-curated-datasets-as-needed-so-the-drug-list-details-are-fully-up-to-date-and-consistent",
+      "title": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
       "reqIds": [
         "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-fix-the-multi-drug-interaction-checker-so-that-when-a-user-enters-3-drug-names-manually-and-clicks-check-interactions-the-results-are-populated-with-real-interaction-details-when-data-exists-instead-of-every-field-rendering-as-not-available-this-includes-ensuring-the-data-source-backend-safety-advisory-response-returns-non-empty-per-pair-interaction-content-for-the-generated-drug-pairs-whenever-the-application-has-a-matching-interaction-record",
-      "title": "Fix the multi-drug interaction checker so that when a user enters 3 drug names manually and clicks \"Check Interactions\", the results are populated with real interaction details when data exists (instead of every field rendering as \"Not Available\"). This includes ensuring the data source (backend safety advisory response) returns non-empty, per-pair interaction content for the generated drug pairs whenever the application has a matching interaction record.",
+      "id": "feature-perform-an-end-to-end-ui-review-of-the-patient-case-flow-patient-selection-case-entry-tabs-case-summary-specifically-to-ensure-prescriber-details-and-drug-database-modules-are-complete-consistent-and-user-facing-copy-is-clear-english-fix-any-broken-placeholder-behavior-encountered-in-these-areas-that-blocks-normal-use",
+      "title": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
       "reqIds": [
         "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-or-minimize-frontend-generated-placeholder-interaction-objects-that-cause-a-full-not-available-report-when-the-backend-does-not-return-an-interaction-for-a-pair-the-ui-must-clearly-indicate-that-no-interaction-data-was-found-for-that-specific-pair-in-english-and-should-not-present-a-full-set-of-not-available-clinical-fields-as-if-it-were-a-completed-report",
-      "title": "Remove or minimize frontend-generated placeholder interaction objects that cause a full \"Not Available\" report. When the backend does not return an interaction for a pair, the UI must clearly indicate that no interaction data was found for that specific pair (in English), and should not present a full set of \"Not Available\" clinical fields as if it were a completed report.",
+      "id": "feature-apply-a-coherent-modern-clinical-visual-theme-across-the-affected-screens-prescriber-details-drug-list-details-case-summary-using-a-warm-neutral-palette-avoid-blue-purple-consistent-typography-and-spacing-without-changing-app-functionality",
+      "title": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
       "reqIds": [
         "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-normalize-drug-name-matching-for-pairwise-interaction-lookups-so-that-differences-in-casing-extra-spaces-punctuation-e-g-hyphens-and-ordering-do-not-prevent-an-existing-interaction-from-being-matched-to-the-expected-pair-in-the-ui-results",
-      "title": "Normalize drug name matching for pairwise interaction lookups so that differences in casing, extra spaces, punctuation (e.g., hyphens), and ordering do not prevent an existing interaction from being matched to the expected pair in the UI results.",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-user-visible-load-example-control-in-the-drug-interaction-checker-drug-drug-tab-that-populates-drug-1-drug-4-with-preselected-medication-names-known-to-have-interaction-data-in-the-app-s-local-interaction-dataset-so-users-can-immediately-test-and-see-non-empty-interaction-results",
-      "title": "Add a user-visible \"Load example\" control in the Drug Interaction Checker (Drug-Drug tab) that populates Drug 1–Drug 4 with preselected medication names known to have interaction data in the app’s local interaction dataset, so users can immediately test and see non-empty interaction results.",
-      "reqIds": [
-        "REQ-8"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-the-app-s-local-drug-interaction-dataset-and-mapping-logic-used-by-the-multi-drug-interaction-check-produce-fully-populated-clinically-oriented-interaction-fields-interaction-type-evidence-level-description-clinical-effects-likely-reactions-toxicity-risk-level-management-recommendations-references-for-the-included-example-inputs-so-results-are-not-shown-as-not-available-when-data-exists",
-      "title": "Ensure the app’s local drug interaction dataset and mapping logic used by the multi-drug interaction check produce fully populated, clinically oriented interaction fields (interaction type, evidence level, description, clinical effects/likely reactions, toxicity risk level, management recommendations, references) for the included example inputs so results are not shown as \"Not Available\" when data exists.",
-      "reqIds": [
-        "REQ-9"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-drug-interaction-results-rendering-regression-so-that-after-a-successful-check-interactions-action-the-ui-always-shows-a-clear-per-pair-outcome-either-a-populated-interaction-report-for-that-pair-or-an-explicit-english-message-that-no-interaction-data-was-found-for-that-specific-pair-rather-than-showing-a-blank-near-empty-results-area",
-      "title": "Fix the Drug Interaction results rendering regression so that after a successful \"Check Interactions\" action, the UI always shows a clear per-pair outcome: either a populated interaction report for that pair or an explicit English message that no interaction data was found for that specific pair, rather than showing a blank/near-empty results area.",
-      "reqIds": [
-        "REQ-10"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-short-user-facing-note-in-the-drug-interaction-checker-explaining-that-results-come-from-the-app-s-built-in-interaction-database-and-may-be-incomplete-rather-than-implying-chatgpt-perplexity-is-being-used-to-generate-interaction-content",
-      "title": "Add a short, user-facing note in the Drug Interaction Checker explaining that results come from the app’s built-in interaction database (and may be incomplete), rather than implying ChatGPT/Perplexity is being used to generate interaction content.",
-      "reqIds": [
-        "REQ-11"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-in-the-drug-interaction-checker-results-drug-drug-tab-explicitly-display-the-interacting-drug-pair-e-g-warfarin-aspirin-for-each-pairwise-interaction-result-so-users-can-clearly-see-which-two-drugs-the-interaction-report-refers-to-this-drug-pair-label-must-be-shown-for-both-cases-1-when-interaction-details-are-available-and-2-when-no-interaction-data-is-found-for-that-pair-the-label-should-still-be-shown-alongside-the-no-data-message",
-      "title": "In the Drug Interaction Checker results (Drug-Drug tab), explicitly display the interacting drug pair (e.g., \"Warfarin + Aspirin\") for each pairwise interaction result so users can clearly see which two drugs the interaction report refers to. This drug-pair label must be shown for both cases: (1) when interaction details are available, and (2) when no interaction data is found for that pair (the label should still be shown alongside the no-data message).",
-      "reqIds": [
-        "REQ-12"
       ],
       "version": 1
     }
@@ -113,19 +50,32 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Make Drug Interaction tab functional: allow entering 2+ drug names and on 'Check Interactions' show drug-drug interactions, safety details (reactions, toxicity), including special pharmacovigilance populations; use ChatGPT/Perplexity for precise results.",
+      "summary": "Add prescriber details section including prefix dropdown (Dr., practitioner nurse, pharmacist) and fields for registration number, address, email, contact number, specialization.",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "In Drug Interaction results UI, explicitly show the interacting drug pair (e.g., Drug A + Drug B) alongside each interaction report.",
+      "summary": "Review and update the drug catalog/details to ensure all drug information is included and fully up to date.",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Perform a full app review (\"check everything\") and add any missing essential fields/features to make the app current.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Ensure backend prescriber storage and API behavior supports the required Prescriber Details fields (prefix, full name, registration number, specialization, contact number, email, address) and does not allow saving empty strings for required fields; return a clear error message when invalid prescriber details are submitted.",
+      "reqIds": [
+        "REQ-3"
+      ],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "BRAINOPHARM",
+  "projectName": "Expand and validate Prescriber Details + make Drug Database fully complete and up to date",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

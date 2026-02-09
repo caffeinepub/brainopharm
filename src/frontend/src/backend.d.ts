@@ -130,18 +130,14 @@ export interface ClinicallyOrientedInteraction {
     clinicalEffects?: string;
     drugs: DrugInteractionPair;
 }
-export interface Drug {
-    status: DrugStatus;
-    source: DrugSource;
-    date: Time;
-    name: string;
-    description: string;
-    category: string;
-    safetyInfo: string;
-}
-export interface DrugInteractionPair {
-    drugA: string;
-    drugB: string;
+export interface PrescriberDetails {
+    fullName: string;
+    registrationNumber: string;
+    email: string;
+    address: string;
+    specialization: string;
+    prefix: PrescriberPrefix;
+    contactNumber: string;
 }
 export interface ExternalResource {
     id: string;
@@ -160,6 +156,19 @@ export interface DrugPairResult {
     description?: string;
     severity?: Severity;
     drugs: DrugInteractionPair;
+}
+export interface DrugInteractionPair {
+    drugA: string;
+    drugB: string;
+}
+export interface Drug {
+    status: DrugStatus;
+    source: DrugSource;
+    date: Time;
+    name: string;
+    description: string;
+    category: string;
+    safetyInfo: string;
 }
 export interface DrugSafetyAdvisory {
     specialPopulations: SpecialPopulationsGuidance;
@@ -228,6 +237,11 @@ export enum OCRStatus {
     pending = "pending",
     processed = "processed",
     failed = "failed"
+}
+export enum PrescriberPrefix {
+    doctor = "doctor",
+    pharmacist = "pharmacist",
+    practitionerNurse = "practitionerNurse"
 }
 export enum ResourceStatus {
     active = "active",
@@ -299,20 +313,24 @@ export interface backendInterface {
     getADRsByPatient(patientId: string): Promise<Array<AdverseDrugReaction>>;
     getAllDrugs(): Promise<Array<Drug>>;
     getAllPatients(): Promise<Array<Patient>>;
-    getCallerDrugSafetyAdvisory(drug1: string, drug2: string, drug3: string, drug4: string): Promise<DrugSafetyAdvisory>;
+    getApprovedDrugs(): Promise<Array<Drug>>;
+    getBannedDrugs(): Promise<Array<Drug>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCaseNarrationsByPatient(patientId: string): Promise<Array<CaseNarration>>;
     getCategorizedDrugs(): Promise<CategorizedDrugs>;
     getChatMessages(): Promise<Array<ChatMessage>>;
+    getDrugSafetyAdvisory(drug1: string, drug2: string, drug3: string, drug4: string): Promise<DrugSafetyAdvisory>;
     getExternalResources(): Promise<Array<ExternalResource>>;
     getLabResultsByPatient(patientId: string): Promise<Array<LabResults>>;
     getMedicationsByPatient(patientId: string): Promise<Array<Medication>>;
+    getPrescriberDetailsByPatientId(patientId: string): Promise<PrescriberDetails | null>;
     getPrescriptionImagesByPatient(patientId: string): Promise<Array<PrescriptionImage>>;
     getRestrictedDrugCategories(): Promise<Array<RestrictedDrugCategory>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     initializeAccessControl(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    savePrescriberDetailsForPatient(patientId: string, prescriberDetails: PrescriberDetails): Promise<void>;
     searchDrugs(searchQuery: string): Promise<Array<Drug>>;
 }

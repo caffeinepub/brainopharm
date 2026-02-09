@@ -8,6 +8,7 @@ import ProfileSetupModal from './components/ProfileSetupModal';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
+import StartupProfileRecoveryBanner from './components/StartupProfileRecoveryBanner';
 import { useState, useEffect, memo } from 'react';
 
 // Ultra-optimized QueryClient with aggressive caching and minimal refetching
@@ -30,8 +31,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Memoized loading component with enhanced feedback and progress tracking
-const LoadingScreen = memo(({ message = 'Loading BRAINOPHARM...', progress }: { message?: string; progress?: number }) => (
+// Memoized loading component for Internet Identity initialization only
+const LoadingScreen = memo(({ message = 'Initializing...' }: { message?: string }) => (
   <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-100 via-green-50 to-blue-50 dark:from-blue-950 dark:via-green-950 dark:to-blue-900">
     <div className="text-center space-y-6 max-w-md px-4">
       <img 
@@ -46,14 +47,6 @@ const LoadingScreen = memo(({ message = 'Loading BRAINOPHARM...', progress }: { 
       <div className="space-y-4">
         <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto will-change-transform"></div>
         <p className="text-lg font-medium text-foreground">{message}</p>
-        {progress !== undefined && (
-          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-300 ease-out will-change-transform"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
       </div>
     </div>
   </div>
@@ -61,72 +54,90 @@ const LoadingScreen = memo(({ message = 'Loading BRAINOPHARM...', progress }: { 
 LoadingScreen.displayName = 'LoadingScreen';
 
 function AppContent() {
-  const { identity, isInitializing, loginStatus } = useInternetIdentity();
-  const { data: userProfile, isLoading: profileLoading, isFetched, error: profileError } = useGetCallerUserProfile();
+  const { identity, isInitializing, loginStatus, clear } = useInternetIdentity();
+  const { data: userProfile, isLoading: profileLoading, isFetched, error: profileError, refetch: refetchProfile } = useGetCallerUserProfile();
   const [currentModule, setCurrentModule] = useState('patients');
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('Loading BRAINOPHARM...');
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [profileLoadDelayed, setProfileLoadDelayed] = useState(false);
 
   const isAuthenticated = !!identity && loginStatus === 'success';
 
-  // Optimized sequential loading with non-blocking profile validation
-  useEffect(() => {
-    if (isAuthenticated) {
-      // Stage 1: Start profile loading immediately
-      if (!isFetched && !profileError) {
-        setLoadingProgress(30);
-        setLoadingMessage('Loading your profile...');
-        setShowDashboard(false);
-      }
-      // Stage 2: Profile loaded or error occurred - show dashboard immediately
-      else if (isFetched || profileError) {
-        setLoadingProgress(100);
-        setLoadingMessage('Ready!');
-        
-        // Show dashboard immediately without delay
-        setShowDashboard(true);
-      }
-    } else {
-      setLoadingProgress(0);
-      setLoadingMessage('Loading BRAINOPHARM...');
-      setShowDashboard(false);
-    }
-  }, [isAuthenticated, isFetched, profileError]);
-
-  // Reset state on logout with instant cleanup
+  // Start 5-second delay timer when authenticated and profile is loading
   useEffect(() => {
     if (!isAuthenticated) {
-      setLoadingProgress(0);
-      setLoadingMessage('Loading BRAINOPHARM...');
-      setShowDashboard(false);
+      setProfileLoadDelayed(false);
+      return;
+    }
+
+    // If profile is still loading after authentication, start timer
+    if (profileLoading && !isFetched && !profileError) {
+      const delayTimer = setTimeout(() => {
+        console.warn('Profile loading exceeded 5 seconds, showing recovery banner');
+        setProfileLoadDelayed(true);
+      }, 5000);
+
+      return () => clearTimeout(delayTimer);
+    }
+
+    // Clear delayed flag when profile loads successfully
+    if (isFetched && !profileError) {
+      setProfileLoadDelayed(false);
+    }
+  }, [isAuthenticated, profileLoading, isFetched, profileError]);
+
+  // Reset state on logout
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProfileLoadDelayed(false);
     }
   }, [isAuthenticated]);
 
-  // Show loading screen during initialization
+  // Show loading screen ONLY during Internet Identity initialization
   if (isInitializing) {
-    return <LoadingScreen progress={loadingProgress} message="Initializing..." />;
+    return <LoadingScreen message="Initializing..." />;
   }
 
-  // Show login screen if not authenticated or login failed
+  // Show login screen if not authenticated
   if (!isAuthenticated) {
     return <LoginScreen />;
   }
 
-  // Show loading screen only while profile is being fetched for the first time
-  // If there's an error or profile is fetched, show dashboard immediately
-  if (!showDashboard && !isFetched && !profileError) {
-    return <LoadingScreen progress={loadingProgress} message={loadingMessage} />;
-  }
+  // After authentication, ALWAYS show Dashboard immediately
+  // Profile Setup modal and recovery banner are shown conditionally within the Dashboard view
 
-  // Determine if profile setup is needed (only if profile is null and successfully fetched)
-  const needsProfileSetup = isFetched && userProfile === null && !profileError;
+  // Show Profile Setup modal only when:
+  // - Profile query has completed (isFetched = true)
+  // - Profile is null (user needs to set up profile)
+  // - No error occurred
+  // - Not in delayed state (to avoid modal flash during slow loading)
+  const showProfileSetup = isAuthenticated && isFetched && userProfile === null && !profileError && !profileLoadDelayed;
+
+  // Show recovery banner when:
+  // - Profile loading is delayed (>5 seconds)
+  // - OR profile fetch resulted in an error
+  const showRecoveryBanner = profileLoadDelayed || !!profileError;
+
+  const handleLogout = async () => {
+    await clear();
+    queryClient.clear();
+  };
+
+  const handleRetry = async () => {
+    setProfileLoadDelayed(false);
+    await refetchProfile();
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 via-green-50 to-blue-100 dark:from-blue-950 dark:via-green-950 dark:to-blue-900">
       <Header />
       <main className="flex-1 w-full">
-        {needsProfileSetup ? (
+        {showRecoveryBanner && (
+          <StartupProfileRecoveryBanner 
+            onRetry={handleRetry}
+            onLogout={handleLogout}
+            isLoading={profileLoading}
+          />
+        )}
+        {showProfileSetup ? (
           <ProfileSetupModal />
         ) : (
           <Dashboard onModuleChange={setCurrentModule} currentModule={currentModule} />

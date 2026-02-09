@@ -7,12 +7,18 @@ import { useGetCallerUserProfile } from '../hooks/useQueries';
 export default function Header() {
   const { clear, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
-  const { data: userProfile } = useGetCallerUserProfile();
+  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
 
   const handleLogout = async () => {
     await clear();
     queryClient.clear();
   };
+
+  // Show profile name only when it's loaded and available
+  const showProfileName = isFetched && userProfile && !profileLoading;
+  
+  // Show loading indicator only when actively loading (not just unfetched)
+  const showLoadingIndicator = profileLoading && !isFetched;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -35,10 +41,15 @@ export default function Header() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          {userProfile && (
+          {showProfileName && (
             <div className="hidden md:block text-sm">
               <span className="text-muted-foreground">Welcome, </span>
               <span className="font-semibold text-foreground">{userProfile.name}</span>
+            </div>
+          )}
+          {showLoadingIndicator && (
+            <div className="hidden md:block text-sm text-muted-foreground">
+              Loading profile...
             </div>
           )}
           <Button onClick={handleLogout} variant="outline" size="sm">

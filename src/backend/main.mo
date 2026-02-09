@@ -3,16 +3,16 @@ import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
-import List "mo:core/List";
 import Iter "mo:core/Iter";
+import List "mo:core/List";
 import Runtime "mo:core/Runtime";
 
 import MixinStorage "blob-storage/Mixin";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
+import Migration "migration";
 
-// Specify the data migration function in with-clause
-
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -324,6 +324,27 @@ actor {
     advisory : DrugSafetyAdvisory;
   };
 
+  public type PrescriberPrefix = {
+    #doctor;
+    #practitionerNurse;
+    #pharmacist;
+  };
+
+  public type PrescriberDetails = {
+    prefix : PrescriberPrefix;
+    fullName : Text;
+    registrationNumber : Text;
+    specialization : Text;
+    contactNumber : Text;
+    email : Text;
+    address : Text;
+  };
+
+  public type ValidatedPrescriberDetails = {
+    #success : PrescriberDetails;
+    #validationError : Text;
+  };
+
   let patients = Map.empty<Text, Patient>();
   let labResults = Map.empty<Text, LabResults>();
   let medications = Map.empty<Text, Medication>();
@@ -337,12 +358,14 @@ actor {
   let drugInteractions = Map.empty<Text, DrugInteraction>();
   let drugTableStore = Map.empty<Text, Drug>();
   let drugSafetyAdvisories = Map.empty<Text, DrugSafetyAdvisory>();
+  let prescriberDetailsMap = Map.empty<Text, PrescriberDetails>();
 
   var chatMessageCounter = 0;
   var prescriptionImageCounter = 0;
   var externalResourceCounter = 0;
 
   let accessControlState = AccessControl.initState();
+  var isAccessControlInitialized = false;
 
   func addPatientInternal(
     name : Text,
@@ -397,8 +420,42 @@ actor {
     };
   };
 
+  func validatePrescriberDetails(prescriberDetails : PrescriberDetails) : ValidatedPrescriberDetails {
+    if (prescriberDetails.fullName.size() == 0) {
+      return #validationError("Full name cannot be empty");
+    };
+    if (prescriberDetails.registrationNumber.size() == 0) {
+      return #validationError("Registration number cannot be empty");
+    };
+    if (prescriberDetails.specialization.size() == 0) {
+      return #validationError("Specialization cannot be empty");
+    };
+    if (prescriberDetails.contactNumber.size() == 0) {
+      return #validationError("Contact number cannot be empty");
+    };
+    if (prescriberDetails.email.size() == 0) {
+      return #validationError("Email cannot be empty");
+    };
+    if (prescriberDetails.address.size() == 0) {
+      return #validationError("Address cannot be empty");
+    };
+    #success(prescriberDetails);
+  };
+
   public shared ({ caller }) func initializeAccessControl() : async () {
+    if (isAccessControlInitialized) {
+      let currentRole = AccessControl.getUserRole(accessControlState, caller);
+      switch (currentRole) {
+        case (#admin) {
+          return;
+        };
+        case (_) {
+          return;
+        };
+      };
+    };
     AccessControl.initialize(accessControlState, caller);
+    isAccessControlInitialized := true;
   };
 
   public query ({ caller }) func getCallerUserRole() : async AccessControl.UserRole {
@@ -414,21 +471,24 @@ actor {
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only authenticated users can access profiles");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view their profile");
     };
-    userProfiles.get(caller);
+    switch (userProfiles.get(caller)) {
+      case (?profile) { ?profile };
+      case (null) { null };
+    };
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile or must be admin");
+      Runtime.trap("Unauthorized: Can only view your own profile or admin access required");
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can save profiles");
     };
     userProfiles.add(caller, profile);
@@ -743,9 +803,7 @@ actor {
   };
 
   public query ({ caller }) func getAllDrugs() : async [Drug] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only authenticated users can view drugs");
-    };
+    // Public access - no authentication required for browsing drug database
     drugTableStore.values().toArray();
   };
 
@@ -757,9 +815,7 @@ actor {
   };
 
   public query ({ caller }) func searchDrugs(searchQuery : Text) : async [Drug] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only authenticated users can search drugs");
-    };
+    // Public access - no authentication required for searching drug database
     let filtered = drugTableStore.toArray().filter(func(entry) {
       entry.1.name.contains(#text searchQuery);
     });
@@ -767,9 +823,7 @@ actor {
   };
 
   public query ({ caller }) func getCategorizedDrugs() : async CategorizedDrugs {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only authenticated users can view categorized drugs");
-    };
+    // Public access - no authentication required for browsing categorized drugs
     let antibiotics = List.empty<DrugWithCategory>();
     let painkillers = List.empty<DrugWithCategory>();
     let fdcs = List.empty<DrugWithCategory>();
@@ -804,17 +858,14 @@ actor {
     };
   };
 
-  public query ({ caller }) func getCallerDrugSafetyAdvisory(
-    drug1 : Text,
-    drug2 : Text,
-    drug3 : Text,
-    drug4 : Text,
+  public query ({ caller }) func getDrugSafetyAdvisory(
+    drug1 : Text, drug2 : Text, drug3 : Text, drug4 : Text
   ) : async DrugSafetyAdvisory {
-    //Authenticates and returns standard template if requester is not authenticated or input is missing
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      //If function is called from frontend without authentication
-      //Do not cause error in Motoko nor protobuf authorization error
-      //Just return standard empty template
+      Runtime.trap("Unauthorized: Only authenticated users can view drug safety advisories");
+    };
+
+    if (drug1 == "" or drug2 == "" or drug3 == "" or drug4 == "") {
       return {
         pairwiseInteractions = [];
         overallRisk = ?{
@@ -832,31 +883,6 @@ actor {
       };
     };
 
-    if (
-      drug1 == "" or drug2 == "" or drug3 == "" or drug4 == ""
-    ) {
-      //Directly return template if some field is missing.
-      //This prevents error when process is in progress and drugs are updated one by one.
-      return {
-        pairwiseInteractions = [];
-        overallRisk = ?{
-          highestSeverityPair = null;
-          highestRiskLevel = null;
-          topRecommendation = null;
-          overallSeverity = null;
-        };
-        specialPopulations = {
-          pregnancy = null;
-          lactation = null;
-          pediatrics = null;
-          geriatrics = null;
-        };
-      };
-    };
-
-    //Lookup logic, comparison, calculation, search, summarization and error handling for added drugs will be handled in TypeScript.
-    //This maximizes robustness and shortens deployment cycles to push new features fast.
-    //Motoko code can just focus on secure persistent data and confidential business logic management.
     {
       pairwiseInteractions = [];
       overallRisk = ?{
@@ -870,6 +896,166 @@ actor {
         lactation = null;
         pediatrics = null;
         geriatrics = null;
+      };
+    };
+  };
+
+  public query ({ caller }) func getApprovedDrugs() : async [Drug] {
+    // Public access - no authentication required for browsing approved drugs
+    let approvedDrugs : [Drug] = [
+      // Antibiotics
+      {
+        name = "Amoxicillin";
+        status = #approved;
+        date = 1401571200;
+        category = "antibiotic";
+        description = "Used to treat a variety of bacterial infections including respiratory and urinary tract infections. Source: Central Drugs Standard Control Organization (CDSCO), India";
+        source = #cdsco;
+        safetyInfo = "Approved for general use. Use with caution in patients with penicillin allergies.";
+      },
+      {
+        name = "Cefuroxime";
+        status = #approved;
+        date = 1401571200;
+        category = "antibiotic";
+        description = "Second-generation cephalosporin antibiotic used for bacterial infections. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Generally well-tolerated. Monitor for allergic reactions.";
+      },
+      {
+        name = "Azithromycin";
+        status = #approved;
+        date = 1401571200;
+        category = "antibiotic";
+        description = "Macrolide antibiotic used to treat respiratory and skin infections. Source: MIMS India";
+        source = #mimsIndia;
+        safetyInfo = "Widely used. Potential for QT prolongation in susceptible patients.";
+      },
+      {
+        name = "Doxycycline";
+        status = #approved;
+        date = 1401571200;
+        category = "antibiotic";
+        description = "Tetracycline antibiotic effective against a wide range of bacterial infections. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Avoid in children under 8 years and pregnant women due to tooth discoloration risk.";
+      },
+      // Painkillers
+      {
+        name = "Paracetamol";
+        status = #approved;
+        date = 1393376000;
+        category = "painkiller";
+        description = "Commonly used analgesic and antipyretic for pain and fever. Source: MIMS India";
+        source = #mimsIndia;
+        safetyInfo = "Safe for general use. Caution in liver disease patients.";
+      },
+      {
+        name = "Ibuprofen";
+        status = #approved;
+        date = 1393376000;
+        category = "painkiller";
+        description = "Nonsteroidal anti-inflammatory drug (NSAID) for pain, inflammation, and fever. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Use with caution in patients with hypertension or gastrointestinal disorders.";
+      },
+      // FDCs (Fixed Dose Combinations)
+      {
+        name = "Amoxicillin-Clavulanate";
+        status = #approved;
+        date = 1401571200;
+        category = "fdc";
+        description = "Combination antibiotic for enhanced bacterial coverage. Source: MIMS India";
+        source = #mimsIndia;
+        safetyInfo = "Approved for certain infections. Beware of gastrointestinal side effects.";
+      },
+      // Vitamins
+      {
+        name = "Vitamin D3 (Cholecalciferol)";
+        status = #approved;
+        date = 1388534400;
+        category = "vitamin";
+        description = "Essential vitamin for bone health and calcium metabolism. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Generally safe. Monitor for toxicity with excessive supplementation.";
+      }
+    ];
+    approvedDrugs;
+  };
+
+  public query ({ caller }) func getBannedDrugs() : async [Drug] {
+    // Public access - no authentication required for browsing banned drugs
+    let bannedDrugs : [Drug] = [
+      // CDSCO Banned Drugs
+      {
+        name = "Sibutramine";
+        status = #banned;
+        date = 1338249600;
+        category = "other";
+        description = "Weight loss medication banned in India due to cardiovascular risks and adverse events. Source: CDSCO, Government of India";
+        source = #cdsco;
+        safetyInfo = "Should not be manufactured or sold in India. Associated with increased risk of heart attack and stroke.";
+      },
+      {
+        name = "Dextropropoxyphene";
+        status = #banned;
+        date = 1346476800;
+        category = "painkiller";
+        description = "Pain reliever banned in India due to safety concerns and risk of cardiac toxicity. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Should not be manufactured or sold in India. Can cause serious heart arrhythmias.";
+      },
+      {
+        name = "Nimesulide (Paediatric Use)";
+        status = #banned;
+        date = 1267142400;
+        category = "painkiller";
+        description = "Nimesulide is banned in India for pediatric use due to hepatotoxicity and safety concerns. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Strictly prohibited in children. Not recommended for pediatric use.";
+      },
+      {
+        name = "Phenylpropanolamine (PPA)";
+        status = #banned;
+        date = 1199145600;
+        category = "other";
+        description = "Decongestant banned due to association with hemorrhagic stroke risk. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Should not be manufactured or sold in India. Strictly prohibited.";
+      },
+      {
+        name = "Rofecoxib";
+        status = #banned;
+        date = 1104537600;
+        category = "painkiller";
+        description = "Nonsteroidal anti-inflammatory drug (NSAID) banned in India for increased cardiovascular risks. Source: CDSCO, India";
+        source = #cdsco;
+        safetyInfo = "Removed from market due to risk of cardiovascular events. Strictly prohibited.";
+      }
+    ];
+    bannedDrugs;
+  };
+
+  public query ({ caller }) func getPrescriberDetailsByPatientId(patientId : Text) : async ?PrescriberDetails {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view prescriber details");
+    };
+    prescriberDetailsMap.get(patientId);
+  };
+
+  public shared ({ caller }) func savePrescriberDetailsForPatient(patientId : Text, prescriberDetails : PrescriberDetails) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can save prescriber details");
+    };
+
+    let validationResult = validatePrescriberDetails(prescriberDetails);
+
+    switch (validationResult) {
+      case (#success(validatedDetails)) {
+        prescriberDetailsMap.add(patientId, validatedDetails);
+      };
+      case (#validationError(errorMessage)) {
+        Runtime.trap(errorMessage);
       };
     };
   };

@@ -175,6 +175,18 @@ export interface Patient {
   'timestamp' : Time,
   'phone' : [] | [string],
 }
+export interface PrescriberDetails {
+  'fullName' : string,
+  'registrationNumber' : string,
+  'email' : string,
+  'address' : string,
+  'specialization' : string,
+  'prefix' : PrescriberPrefix,
+  'contactNumber' : string,
+}
+export type PrescriberPrefix = { 'doctor' : null } |
+  { 'pharmacist' : null } |
+  { 'practitionerNurse' : null };
 export interface PrescriptionImage {
   'id' : string,
   'patientId' : string,
@@ -321,18 +333,24 @@ export interface _SERVICE {
   'getADRsByPatient' : ActorMethod<[string], Array<AdverseDrugReaction>>,
   'getAllDrugs' : ActorMethod<[], Array<Drug>>,
   'getAllPatients' : ActorMethod<[], Array<Patient>>,
-  'getCallerDrugSafetyAdvisory' : ActorMethod<
-    [string, string, string, string],
-    DrugSafetyAdvisory
-  >,
+  'getApprovedDrugs' : ActorMethod<[], Array<Drug>>,
+  'getBannedDrugs' : ActorMethod<[], Array<Drug>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCaseNarrationsByPatient' : ActorMethod<[string], Array<CaseNarration>>,
   'getCategorizedDrugs' : ActorMethod<[], CategorizedDrugs>,
   'getChatMessages' : ActorMethod<[], Array<ChatMessage>>,
+  'getDrugSafetyAdvisory' : ActorMethod<
+    [string, string, string, string],
+    DrugSafetyAdvisory
+  >,
   'getExternalResources' : ActorMethod<[], Array<ExternalResource>>,
   'getLabResultsByPatient' : ActorMethod<[string], Array<LabResults>>,
   'getMedicationsByPatient' : ActorMethod<[string], Array<Medication>>,
+  'getPrescriberDetailsByPatientId' : ActorMethod<
+    [string],
+    [] | [PrescriberDetails]
+  >,
   'getPrescriptionImagesByPatient' : ActorMethod<
     [string],
     Array<PrescriptionImage>
@@ -345,6 +363,10 @@ export interface _SERVICE {
   'initializeAccessControl' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'savePrescriberDetailsForPatient' : ActorMethod<
+    [string, PrescriberDetails],
+    undefined
+  >,
   'searchDrugs' : ActorMethod<[string], Array<Drug>>,
 }
 export declare const idlService: IDL.ServiceClass;

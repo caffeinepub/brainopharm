@@ -145,40 +145,6 @@ export const Patient = IDL.Record({
   'timestamp' : Time,
   'phone' : IDL.Opt(IDL.Text),
 });
-export const SpecialPopulationsGuidance = IDL.Record({
-  'lactation' : IDL.Opt(IDL.Text),
-  'pediatrics' : IDL.Opt(IDL.Text),
-  'pregnancy' : IDL.Opt(IDL.Text),
-  'geriatrics' : IDL.Opt(IDL.Text),
-});
-export const ToxicityRiskLevel = IDL.Variant({
-  'low' : IDL.Null,
-  'high' : IDL.Null,
-  'moderate' : IDL.Null,
-  'unknown' : IDL.Null,
-});
-export const OverallRiskSummary = IDL.Record({
-  'highestRiskLevel' : IDL.Opt(ToxicityRiskLevel),
-  'topRecommendation' : IDL.Opt(IDL.Text),
-  'overallSeverity' : IDL.Opt(Severity),
-  'highestSeverityPair' : IDL.Opt(DrugInteractionPair),
-});
-export const ClinicallyOrientedInteraction = IDL.Record({
-  'managementRecommendations' : IDL.Opt(IDL.Text),
-  'interactionType' : IDL.Opt(InteractionType),
-  'references' : IDL.Vec(IDL.Text),
-  'evidenceLevel' : IDL.Opt(EvidenceLevel),
-  'description' : IDL.Opt(IDL.Text),
-  'severity' : IDL.Opt(Severity),
-  'toxicityRisk' : IDL.Opt(ToxicityRiskLevel),
-  'clinicalEffects' : IDL.Opt(IDL.Text),
-  'drugs' : DrugInteractionPair,
-});
-export const DrugSafetyAdvisory = IDL.Record({
-  'specialPopulations' : SpecialPopulationsGuidance,
-  'overallRisk' : IDL.Opt(OverallRiskSummary),
-  'pairwiseInteractions' : IDL.Vec(ClinicallyOrientedInteraction),
-});
 export const UserProfile = IDL.Record({
   'name' : IDL.Text,
   'role' : IDL.Text,
@@ -224,6 +190,40 @@ export const ChatMessage = IDL.Record({
   'message' : IDL.Text,
   'timestamp' : Time,
 });
+export const SpecialPopulationsGuidance = IDL.Record({
+  'lactation' : IDL.Opt(IDL.Text),
+  'pediatrics' : IDL.Opt(IDL.Text),
+  'pregnancy' : IDL.Opt(IDL.Text),
+  'geriatrics' : IDL.Opt(IDL.Text),
+});
+export const ToxicityRiskLevel = IDL.Variant({
+  'low' : IDL.Null,
+  'high' : IDL.Null,
+  'moderate' : IDL.Null,
+  'unknown' : IDL.Null,
+});
+export const OverallRiskSummary = IDL.Record({
+  'highestRiskLevel' : IDL.Opt(ToxicityRiskLevel),
+  'topRecommendation' : IDL.Opt(IDL.Text),
+  'overallSeverity' : IDL.Opt(Severity),
+  'highestSeverityPair' : IDL.Opt(DrugInteractionPair),
+});
+export const ClinicallyOrientedInteraction = IDL.Record({
+  'managementRecommendations' : IDL.Opt(IDL.Text),
+  'interactionType' : IDL.Opt(InteractionType),
+  'references' : IDL.Vec(IDL.Text),
+  'evidenceLevel' : IDL.Opt(EvidenceLevel),
+  'description' : IDL.Opt(IDL.Text),
+  'severity' : IDL.Opt(Severity),
+  'toxicityRisk' : IDL.Opt(ToxicityRiskLevel),
+  'clinicalEffects' : IDL.Opt(IDL.Text),
+  'drugs' : DrugInteractionPair,
+});
+export const DrugSafetyAdvisory = IDL.Record({
+  'specialPopulations' : SpecialPopulationsGuidance,
+  'overallRisk' : IDL.Opt(OverallRiskSummary),
+  'pairwiseInteractions' : IDL.Vec(ClinicallyOrientedInteraction),
+});
 export const LabResults = IDL.Record({
   'patientId' : IDL.Text,
   'labResultsId' : IDL.Text,
@@ -242,6 +242,20 @@ export const Medication = IDL.Record({
   'timestamp' : Time,
   'frequency' : IDL.Opt(IDL.Text),
   'startDate' : IDL.Opt(Time),
+});
+export const PrescriberPrefix = IDL.Variant({
+  'doctor' : IDL.Null,
+  'pharmacist' : IDL.Null,
+  'practitionerNurse' : IDL.Null,
+});
+export const PrescriberDetails = IDL.Record({
+  'fullName' : IDL.Text,
+  'registrationNumber' : IDL.Text,
+  'email' : IDL.Text,
+  'address' : IDL.Text,
+  'specialization' : IDL.Text,
+  'prefix' : PrescriberPrefix,
+  'contactNumber' : IDL.Text,
 });
 export const OCRStatus = IDL.Variant({
   'pending' : IDL.Null,
@@ -403,11 +417,8 @@ export const idlService = IDL.Service({
     ),
   'getAllDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getAllPatients' : IDL.Func([], [IDL.Vec(Patient)], ['query']),
-  'getCallerDrugSafetyAdvisory' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-      [DrugSafetyAdvisory],
-      ['query'],
-    ),
+  'getApprovedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+  'getBannedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCaseNarrationsByPatient' : IDL.Func(
@@ -417,6 +428,11 @@ export const idlService = IDL.Service({
     ),
   'getCategorizedDrugs' : IDL.Func([], [CategorizedDrugs], ['query']),
   'getChatMessages' : IDL.Func([], [IDL.Vec(ChatMessage)], ['query']),
+  'getDrugSafetyAdvisory' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [DrugSafetyAdvisory],
+      ['query'],
+    ),
   'getExternalResources' : IDL.Func([], [IDL.Vec(ExternalResource)], ['query']),
   'getLabResultsByPatient' : IDL.Func(
       [IDL.Text],
@@ -426,6 +442,11 @@ export const idlService = IDL.Service({
   'getMedicationsByPatient' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(Medication)],
+      ['query'],
+    ),
+  'getPrescriberDetailsByPatientId' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(PrescriberDetails)],
       ['query'],
     ),
   'getPrescriptionImagesByPatient' : IDL.Func(
@@ -446,6 +467,11 @@ export const idlService = IDL.Service({
   'initializeAccessControl' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'savePrescriberDetailsForPatient' : IDL.Func(
+      [IDL.Text, PrescriberDetails],
+      [],
+      [],
+    ),
   'searchDrugs' : IDL.Func([IDL.Text], [IDL.Vec(Drug)], ['query']),
 });
 
@@ -589,40 +615,6 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : Time,
     'phone' : IDL.Opt(IDL.Text),
   });
-  const SpecialPopulationsGuidance = IDL.Record({
-    'lactation' : IDL.Opt(IDL.Text),
-    'pediatrics' : IDL.Opt(IDL.Text),
-    'pregnancy' : IDL.Opt(IDL.Text),
-    'geriatrics' : IDL.Opt(IDL.Text),
-  });
-  const ToxicityRiskLevel = IDL.Variant({
-    'low' : IDL.Null,
-    'high' : IDL.Null,
-    'moderate' : IDL.Null,
-    'unknown' : IDL.Null,
-  });
-  const OverallRiskSummary = IDL.Record({
-    'highestRiskLevel' : IDL.Opt(ToxicityRiskLevel),
-    'topRecommendation' : IDL.Opt(IDL.Text),
-    'overallSeverity' : IDL.Opt(Severity),
-    'highestSeverityPair' : IDL.Opt(DrugInteractionPair),
-  });
-  const ClinicallyOrientedInteraction = IDL.Record({
-    'managementRecommendations' : IDL.Opt(IDL.Text),
-    'interactionType' : IDL.Opt(InteractionType),
-    'references' : IDL.Vec(IDL.Text),
-    'evidenceLevel' : IDL.Opt(EvidenceLevel),
-    'description' : IDL.Opt(IDL.Text),
-    'severity' : IDL.Opt(Severity),
-    'toxicityRisk' : IDL.Opt(ToxicityRiskLevel),
-    'clinicalEffects' : IDL.Opt(IDL.Text),
-    'drugs' : DrugInteractionPair,
-  });
-  const DrugSafetyAdvisory = IDL.Record({
-    'specialPopulations' : SpecialPopulationsGuidance,
-    'overallRisk' : IDL.Opt(OverallRiskSummary),
-    'pairwiseInteractions' : IDL.Vec(ClinicallyOrientedInteraction),
-  });
   const UserProfile = IDL.Record({
     'name' : IDL.Text,
     'role' : IDL.Text,
@@ -668,6 +660,40 @@ export const idlFactory = ({ IDL }) => {
     'message' : IDL.Text,
     'timestamp' : Time,
   });
+  const SpecialPopulationsGuidance = IDL.Record({
+    'lactation' : IDL.Opt(IDL.Text),
+    'pediatrics' : IDL.Opt(IDL.Text),
+    'pregnancy' : IDL.Opt(IDL.Text),
+    'geriatrics' : IDL.Opt(IDL.Text),
+  });
+  const ToxicityRiskLevel = IDL.Variant({
+    'low' : IDL.Null,
+    'high' : IDL.Null,
+    'moderate' : IDL.Null,
+    'unknown' : IDL.Null,
+  });
+  const OverallRiskSummary = IDL.Record({
+    'highestRiskLevel' : IDL.Opt(ToxicityRiskLevel),
+    'topRecommendation' : IDL.Opt(IDL.Text),
+    'overallSeverity' : IDL.Opt(Severity),
+    'highestSeverityPair' : IDL.Opt(DrugInteractionPair),
+  });
+  const ClinicallyOrientedInteraction = IDL.Record({
+    'managementRecommendations' : IDL.Opt(IDL.Text),
+    'interactionType' : IDL.Opt(InteractionType),
+    'references' : IDL.Vec(IDL.Text),
+    'evidenceLevel' : IDL.Opt(EvidenceLevel),
+    'description' : IDL.Opt(IDL.Text),
+    'severity' : IDL.Opt(Severity),
+    'toxicityRisk' : IDL.Opt(ToxicityRiskLevel),
+    'clinicalEffects' : IDL.Opt(IDL.Text),
+    'drugs' : DrugInteractionPair,
+  });
+  const DrugSafetyAdvisory = IDL.Record({
+    'specialPopulations' : SpecialPopulationsGuidance,
+    'overallRisk' : IDL.Opt(OverallRiskSummary),
+    'pairwiseInteractions' : IDL.Vec(ClinicallyOrientedInteraction),
+  });
   const LabResults = IDL.Record({
     'patientId' : IDL.Text,
     'labResultsId' : IDL.Text,
@@ -686,6 +712,20 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : Time,
     'frequency' : IDL.Opt(IDL.Text),
     'startDate' : IDL.Opt(Time),
+  });
+  const PrescriberPrefix = IDL.Variant({
+    'doctor' : IDL.Null,
+    'pharmacist' : IDL.Null,
+    'practitionerNurse' : IDL.Null,
+  });
+  const PrescriberDetails = IDL.Record({
+    'fullName' : IDL.Text,
+    'registrationNumber' : IDL.Text,
+    'email' : IDL.Text,
+    'address' : IDL.Text,
+    'specialization' : IDL.Text,
+    'prefix' : PrescriberPrefix,
+    'contactNumber' : IDL.Text,
   });
   const OCRStatus = IDL.Variant({
     'pending' : IDL.Null,
@@ -847,11 +887,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getAllDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getAllPatients' : IDL.Func([], [IDL.Vec(Patient)], ['query']),
-    'getCallerDrugSafetyAdvisory' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-        [DrugSafetyAdvisory],
-        ['query'],
-      ),
+    'getApprovedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+    'getBannedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCaseNarrationsByPatient' : IDL.Func(
@@ -861,6 +898,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCategorizedDrugs' : IDL.Func([], [CategorizedDrugs], ['query']),
     'getChatMessages' : IDL.Func([], [IDL.Vec(ChatMessage)], ['query']),
+    'getDrugSafetyAdvisory' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [DrugSafetyAdvisory],
+        ['query'],
+      ),
     'getExternalResources' : IDL.Func(
         [],
         [IDL.Vec(ExternalResource)],
@@ -874,6 +916,11 @@ export const idlFactory = ({ IDL }) => {
     'getMedicationsByPatient' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(Medication)],
+        ['query'],
+      ),
+    'getPrescriberDetailsByPatientId' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(PrescriberDetails)],
         ['query'],
       ),
     'getPrescriptionImagesByPatient' : IDL.Func(
@@ -894,6 +941,11 @@ export const idlFactory = ({ IDL }) => {
     'initializeAccessControl' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'savePrescriberDetailsForPatient' : IDL.Func(
+        [IDL.Text, PrescriberDetails],
+        [],
+        [],
+      ),
     'searchDrugs' : IDL.Func([IDL.Text], [IDL.Vec(Drug)], ['query']),
   });
 };

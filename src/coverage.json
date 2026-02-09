@@ -1,37 +1,112 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T09:06:09.258Z",
+  "generatedAt": "2026-02-09T10:19:56.928Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 6,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-12",
-        "summary": "In the Drug Interaction Checker results (Drug-Drug tab), explicitly display the interacting drug pair (e.g., \"Warfarin + Aspirin\") for each pairwise interaction result so users can clearly see which two drugs the interaction report refers to. This drug-pair label must be shown for both cases: (1) when interaction details are available, and (2) when no interaction data is found for that pair (the label should still be shown alongside the no-data message).",
+        "id": "REQ-1",
+        "summary": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/DrugInteractionsModule.tsx",
-          "frontend/src/utils/drugPairs.ts"
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/DrugInteractionsModule.tsx",
-          "frontend/src/utils/drugPairs.ts"
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/PrescriberDetailsSection.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/PrescriberDetailsSection.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Ensure backend prescriber storage and API behavior supports the required Prescriber Details fields (prefix, full name, registration number, specialization, contact number, email, address) and does not allow saving empty strings for required fields; return a clear error message when invalid prescriber details are submitted.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DrugDetailsModal.tsx",
+          "frontend/src/components/DrugTableModule.tsx",
+          "frontend/src/data/curatedDrugDataset.ts",
+          "frontend/src/services/multiSourceDrugService.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/DrugDetailsModal.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/CaseEntry.tsx",
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx",
+          "frontend/src/components/DrugTableModule.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/tailwind.config.js",
+          "frontend/src/index.css",
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx",
+          "frontend/src/components/DrugTableModule.tsx",
+          "frontend/src/components/DrugDetailsModal.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/tailwind.config.js",
+          "frontend/src/index.css",
+          "frontend/src/components/PrescriberDetailsSection.tsx",
+          "frontend/src/components/CaseSummary.tsx",
+          "frontend/src/components/DrugDetailsModal.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/DrugInteractionsModule.tsx",
-    "frontend/src/utils/drugPairs.ts",
+    "frontend/src/components/CaseSummary.tsx",
+    "frontend/src/components/DrugDetailsModal.tsx",
+    "frontend/src/components/PrescriberDetailsSection.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/index.css",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

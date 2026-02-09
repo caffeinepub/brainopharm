@@ -1,37 +1,145 @@
 {
   "kind": "build_request",
-  "title": "Show explicit drug pair labels in interaction results",
+  "title": "Expand and validate Prescriber Details + make Drug Database fully complete and up to date",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-12",
-      "text": "In the Drug Interaction Checker results (Drug-Drug tab), explicitly display the interacting drug pair (e.g., \"Warfarin + Aspirin\") for each pairwise interaction result so users can clearly see which two drugs the interaction report refers to. This drug-pair label must be shown for both cases: (1) when interaction details are available, and (2) when no interaction data is found for that pair (the label should still be shown alongside the no-data message).",
+      "id": "REQ-1",
+      "text": "Update the Prescriber Details section to match the requested prescriber fields and labels: prefix dropdown options must display exactly \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\"; fields must include Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and these values must be saved and displayed consistently for the selected patient.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-1"
         ],
         "quotes": [
-          "please also show the drug pair interaction"
+          "please check everything, add prescribers details like prefix  dropdown section add Dr., practitioner nurse, pharmacist, then registration number, address, mail id, contact number, specialization"
         ]
       },
       "acceptanceCriteria": [
-        "After running \"Check Interactions\" with >= 2 drug names, each rendered pairwise result section/card includes a prominent drug-pair label in the format \"<Drug A> + <Drug B>\".",
-        "If the app shows a per-pair \"no interaction data found\" message, that message is displayed together with the drug-pair label for the same pair (not as a standalone message without the pair context).",
-        "The drug-pair label uses the same displayed drug names as the interaction object’s drugs fields (e.g., interaction.drugs.drugA and interaction.drugs.drugB), and is user-facing English text."
+        "In the Prescriber Details UI, prefix is a dropdown and the visible option labels are exactly: \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\".",
+        "The Prescriber Details UI shows input fields for: Registration Number, Address, Mail ID (email), Contact Number, Specialization.",
+        "When a user saves Prescriber Details for a patient, leaving and returning to the patient shows the saved values (view mode and edit mode load the saved data).",
+        "User-facing labels use English and include \"Mail ID\" (not only \"Email Address\") for the email field."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Tighten Prescriber Details validation so the prescriber record is complete: require non-empty values for registration number, address, contact number, and specialization; require a valid email format for Mail ID and require Mail ID to be provided (non-empty). Validation errors must be shown inline and prevent saving.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "then registration number, address, mail id, contact number, specialization"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Attempting to save with any missing required field shows an inline error and the save mutation is not triggered.",
+        "Mail ID is required; saving with an empty Mail ID shows an inline error.",
+        "Mail ID must match an email pattern; saving with an invalid email shows an inline error.",
+        "Contact Number validation accepts phone-like input (digits/spaces/+/-/() ) and rejects clearly invalid input as it does today."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure backend prescriber storage and API behavior supports the required Prescriber Details fields (prefix, full name, registration number, specialization, contact number, email, address) and does not allow saving empty strings for required fields; return a clear error message when invalid prescriber details are submitted.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "add prescribers details ... then registration number, address, mail id, contact number, specialization"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend rejects prescriber details submissions where any required field is an empty string (registrationNumber, specialization, contactNumber, email, address, fullName) with a clear English error message.",
+        "Backend continues to store and return prescriber details per patientId, and the frontend can still load/save without type mismatches.",
+        "No new canisters/services are introduced; changes stay within the existing single-actor backend."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Audit the built-in Drug Database so every drug record shown in the UI has complete core fields (name, status, category, date, description, source attribution, safety/ban information) and update the curated datasets as needed so the drug list/details are \"fully up to date\" and consistent.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "check and add all the drug details and if you feel any thing require then please add them so it becomes fully up to date."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Drug list and Drug Details modal never crash due to missing/empty core drug fields; missing values display a consistent English fallback such as \"Not available\".",
+        "Banned drugs always display a clearly labeled \"Ban Reason & Safety Information\" section populated from the dataset (or a fallback if missing).",
+        "Curated drug dataset entries are updated so core fields are populated consistently (no empty string core fields) for records included in the shipped dataset.",
+        "Any normalization/deduplication does not remove banned entries in favor of approved entries when duplicates exist (banned must still win)."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Perform an end-to-end UI review of the patient case flow (patient selection → Case Entry tabs → Case Summary) specifically to ensure Prescriber Details and Drug Database modules are complete, consistent, and user-facing copy is clear English; fix any broken/placeholder behavior encountered in these areas that blocks normal use.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "please check everything"
+        ]
+      },
+      "acceptanceCriteria": [
+        "No obvious broken states in Prescriber Details and Drug Database modules (loading, empty state, save state, error state all render correctly).",
+        "Case Summary displays the saved Prescriber Details for the patient without missing-field UI glitches.",
+        "Any user-facing text touched by this change is in English and consistent in terminology (e.g., \"Mail ID\" vs \"Email\")."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Apply a coherent, modern clinical visual theme across the affected screens (Prescriber Details, Drug list/details, Case Summary) using a warm neutral palette (avoid blue/purple), consistent typography, and spacing, without changing app functionality.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "please check everything"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Prescriber Details, Drug Database, and Case Summary sections share consistent heading styles, form spacing, and card styling.",
+        "Theme uses a warm neutral palette (e.g., off-white/stone/charcoal with a green or amber accent), and does not introduce blue/purple as the primary theme colors.",
+        "No changes to authentication or routing are required for the theme update."
       ]
     }
   ],
   "constraints": [
-    "Do not edit any files under frontend/src/components/ui or any other frontend immutablePaths.",
-    "Keep the existing single-actor Motoko backend architecture unchanged unless strictly required for this UI change."
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Only generate backend/migration.mo if a stable-state schema change is required for existing persisted data.",
+    "Do not edit files under frontend/src/components/ui or any other immutable paths listed in SYSTEM_CONTEXT.",
+    "Do not add third-party authentication; Internet Identity remains the only auth mechanism.",
+    "Do not add external databases or third-party drug data APIs; updates must use the existing built-in datasets/services."
   ],
   "nonGoals": [
-    "Changing the interaction data source, dataset contents, or backend matching logic.",
-    "Adding new tabs or new interaction types beyond displaying the drug pair label."
+    "Adding new export formats beyond the existing on-screen/export placeholder behavior.",
+    "Implementing real-time collaboration/chat features.",
+    "Integrating live CDSCO/MIMS/FDA/WHO APIs or web scraping for drug updates.",
+    "Adding new backend canisters or microservices."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

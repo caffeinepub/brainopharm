@@ -7,7 +7,8 @@ import LabResultsForm from './LabResultsForm';
 import MedicationForm from './MedicationForm';
 import AdrForm from './AdrForm';
 import CaseSummary from './CaseSummary';
-import { Activity, Pill, AlertTriangle, FileText } from 'lucide-react';
+import PrescriberDetailsSection from './PrescriberDetailsSection';
+import { Activity, Pill, AlertTriangle, FileText, UserCog } from 'lucide-react';
 
 interface CaseEntryProps {
   patientId: string;
@@ -75,7 +76,7 @@ export default function CaseEntry({ patientId }: CaseEntryProps) {
       </Card>
 
       <Tabs defaultValue="lab" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="lab" className="gap-2">
             <Activity className="h-4 w-4" />
             Lab Results
@@ -87,6 +88,10 @@ export default function CaseEntry({ patientId }: CaseEntryProps) {
           <TabsTrigger value="adr" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             ADR
+          </TabsTrigger>
+          <TabsTrigger value="prescriber" className="gap-2">
+            <UserCog className="h-4 w-4" />
+            Prescriber
           </TabsTrigger>
           <TabsTrigger value="summary" className="gap-2">
             <FileText className="h-4 w-4" />
@@ -104,6 +109,10 @@ export default function CaseEntry({ patientId }: CaseEntryProps) {
 
         <TabsContent value="adr">
           <AdrForm patientId={patientId} />
+        </TabsContent>
+
+        <TabsContent value="prescriber">
+          <PrescriberDetailsSection patientId={patientId} />
         </TabsContent>
 
         <TabsContent value="summary">
