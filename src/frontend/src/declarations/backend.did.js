@@ -233,6 +233,12 @@ export const LabResults = IDL.Record({
   'bloodPressureSystolic' : IDL.Opt(IDL.Nat),
   'uricAcid' : IDL.Opt(IDL.Float64),
 });
+export const DrugVerificationResult = IDL.Record({
+  'verifiedBannedDrugs' : IDL.Vec(Drug),
+  'verificationTimestamp' : Time,
+  'allDrugs' : IDL.Vec(Drug),
+  'verifiedApprovedDrugs' : IDL.Vec(Drug),
+});
 export const Medication = IDL.Record({
   'endDate' : IDL.Opt(Time),
   'dosage' : IDL.Opt(IDL.Text),
@@ -416,6 +422,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getAllDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+  'getAllDrugsFromStore' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getAllPatients' : IDL.Func([], [IDL.Vec(Patient)], ['query']),
   'getApprovedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getBannedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
@@ -434,9 +441,19 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getExternalResources' : IDL.Func([], [IDL.Vec(ExternalResource)], ['query']),
+  'getFilteredDrugs' : IDL.Func(
+      [IDL.Opt(DrugStatus)],
+      [IDL.Vec(Drug)],
+      ['query'],
+    ),
   'getLabResultsByPatient' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(LabResults)],
+      ['query'],
+    ),
+  'getLastDrugVerification' : IDL.Func(
+      [],
+      [IDL.Opt(DrugVerificationResult)],
       ['query'],
     ),
   'getMedicationsByPatient' : IDL.Func(
@@ -466,6 +483,7 @@ export const idlService = IDL.Service({
     ),
   'initializeAccessControl' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'refreshAndVerifyDrugTable' : IDL.Func([], [DrugVerificationResult], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'savePrescriberDetailsForPatient' : IDL.Func(
       [IDL.Text, PrescriberDetails],
@@ -703,6 +721,12 @@ export const idlFactory = ({ IDL }) => {
     'bloodPressureSystolic' : IDL.Opt(IDL.Nat),
     'uricAcid' : IDL.Opt(IDL.Float64),
   });
+  const DrugVerificationResult = IDL.Record({
+    'verifiedBannedDrugs' : IDL.Vec(Drug),
+    'verificationTimestamp' : Time,
+    'allDrugs' : IDL.Vec(Drug),
+    'verifiedApprovedDrugs' : IDL.Vec(Drug),
+  });
   const Medication = IDL.Record({
     'endDate' : IDL.Opt(Time),
     'dosage' : IDL.Opt(IDL.Text),
@@ -886,6 +910,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getAllDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+    'getAllDrugsFromStore' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getAllPatients' : IDL.Func([], [IDL.Vec(Patient)], ['query']),
     'getApprovedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getBannedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
@@ -908,9 +933,19 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(ExternalResource)],
         ['query'],
       ),
+    'getFilteredDrugs' : IDL.Func(
+        [IDL.Opt(DrugStatus)],
+        [IDL.Vec(Drug)],
+        ['query'],
+      ),
     'getLabResultsByPatient' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(LabResults)],
+        ['query'],
+      ),
+    'getLastDrugVerification' : IDL.Func(
+        [],
+        [IDL.Opt(DrugVerificationResult)],
         ['query'],
       ),
     'getMedicationsByPatient' : IDL.Func(
@@ -940,6 +975,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'initializeAccessControl' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'refreshAndVerifyDrugTable' : IDL.Func([], [DrugVerificationResult], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'savePrescriberDetailsForPatient' : IDL.Func(
         [IDL.Text, PrescriberDetails],

@@ -1,13 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the Drug Interaction checker so manual entries in Drug-Drug, Drug-Food, and Food-Food always produce and display fully updated results, with proper validation and client-side loading/error handling.
+**Goal:** Update the complete curated drug dataset and ensure the app reliably fetches, renders, and verifies the full drug list (approved/banned) without truncation.
 
 **Planned changes:**
-- Replace stubbed interaction-check hooks with React Query-based client-side queries that recompute from the current manual inputs and update results for Drug-Drug, Drug-Food, and Food-Food.
-- Ensure query keys incorporate normalized input values so editing inputs and re-checking triggers fresh computation and UI re-render.
-- Add and enforce manual input validation for each tab (including minimum entries and duplicate detection), showing clear English validation messages and preventing checks when invalid.
-- Ensure all interaction computations use existing local datasets/indexes (drug-drug, drug-food, food-food) and do not depend on backend availability.
-- Expose and wire up loading and error states from the interaction queries so the UI can show a spinner/skeleton and error messaging.
+- Update `frontend/src/data/curatedDrugDataset.ts` with an up-to-date complete drug list, ensuring each record includes: name, status (approved/banned), date, category (when known), description, source, and safetyInfo, and that entries conform to existing `Drug`/`DrugStatus`/`DrugSource` types with deterministic deduplication.
+- Adjust backend drug query behavior so `getAllDrugs` returns the full dataset (approved + banned) and approved-only/banned-only queries return complete, correctly filtered results independent of any user/profile loading state.
+- Add a post-refresh verification workflow that checks basic dataset validity (non-zero count, non-empty names, valid status present, no duplicates by normalization rules) and exposes a clear success/failure result plus a human-readable failure summary in the UI.
+- Update the Drug Database UI to render the entire dataset for All/Approved/Banned tabs, with search and category filters applied over the full list; if needed for large lists, add pagination or virtualization while preserving existing search, CSV export, and the drug details modal.
 
-**User-visible outcome:** After manually entering drugs/foods and clicking “Check interactions” in any tab, users see up-to-date interaction results for the current inputs, along with clear validation messages when inputs are invalid and visible loading/error states during checks.
+**User-visible outcome:** After refreshing/updating the drug list, users can see the full set of All/Approved/Banned drugs without missing items, and they receive a clear verification success/failure result (with an explanation if something is wrong).

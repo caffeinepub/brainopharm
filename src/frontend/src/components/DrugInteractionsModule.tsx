@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ExternalLink, AlertTriangle, Info, GitCompare, Database, Shield, Activity, Pill, Lightbulb, Apple, UtensilsCrossed } from 'lucide-react';
-import { useCheckMultiDrugInteraction, useCheckDrugFoodInteractions, useCheckFoodFoodInteractions } from '../hooks/useQueries';
+import { useCheckMultiDrugInteraction, useCheckDrugFoodInteraction, useCheckFoodFoodInteraction } from '../hooks/useQueries';
 import { Skeleton } from './ui/skeleton';
 import { Severity, InteractionType, EvidenceLevel, ToxicityRiskLevel } from '../backend';
 import { generateOverallSummary, formatSeverity, formatToxicityRisk } from '../utils/interactionSummary';
@@ -413,8 +413,8 @@ export default function DrugInteractionsModule() {
 
   // React Query hooks for interaction checks
   const multiDrugQuery = useCheckMultiDrugInteraction(drugsToCheck);
-  const drugFoodQuery = useCheckDrugFoodInteractions(dfDrugsToCheck, dfFoodsToCheck);
-  const foodFoodQuery = useCheckFoodFoodInteractions(foodsToCheck);
+  const drugFoodQuery = useCheckDrugFoodInteraction(dfDrugsToCheck, dfFoodsToCheck);
+  const foodFoodQuery = useCheckFoodFoodInteraction(foodsToCheck);
 
   // Helper functions
   const getSeverityBadgeVariant = useCallback((severity?: Severity): 'default' | 'secondary' | 'destructive' | 'outline' => {
@@ -454,7 +454,7 @@ export default function DrugInteractionsModule() {
       case InteractionType.pharmacodynamic:
         return 'Pharmacodynamic';
       case InteractionType.both:
-        return 'Both (PK/PD)';
+        return 'Both (PK + PD)';
       default:
         return 'Unknown';
     }
@@ -480,552 +480,596 @@ export default function DrugInteractionsModule() {
     }
   }, []);
 
+  // Check if interaction has real data (not placeholder)
   const hasRealDrugDrugData = useCallback((interaction: DrugDrugInteractionResult): boolean => {
-    return !!interaction.description;
+    return !!interaction.description && interaction.description.trim() !== '';
   }, []);
 
   const hasRealDrugFoodData = useCallback((interaction: DrugFoodInteractionResult): boolean => {
-    return !!interaction.description;
+    return !!interaction.description && interaction.description.trim() !== '';
   }, []);
 
   const hasRealFoodFoodData = useCallback((interaction: FoodFoodInteractionResult): boolean => {
-    return !!interaction.description;
+    return !!interaction.description && interaction.description.trim() !== '';
   }, []);
 
   // Drug-Drug handlers
-  const handleCheckDrugDrugInteractions = useCallback(() => {
+  const handleDrugDrugCheck = useCallback(() => {
     const drugs = [drug1, drug2, drug3, drug4].filter(d => d.trim() !== '');
-
-    // Validation
+    
     if (drugs.length < 2) {
-      setDrugDrugError('Please enter at least two medications to check interactions.');
-      setDrugDrugSearchPerformed(false);
+      setDrugDrugError('Please enter at least 2 drugs');
       return;
     }
 
     const duplicates = findDuplicateNames(drugs);
     if (duplicates.length > 0) {
-      setDrugDrugError('Please enter different medications. Duplicate drug names detected.');
-      setDrugDrugSearchPerformed(false);
+      setDrugDrugError(`Duplicate drugs detected: ${duplicates.join(', ')}`);
       return;
     }
 
-    // Clear error and perform check
     setDrugDrugError(null);
     setDrugsToCheck(drugs);
     setDrugDrugSearchPerformed(true);
   }, [drug1, drug2, drug3, drug4]);
 
-  const handleLoadDrugExample = useCallback((exampleId: string) => {
+  const handleDrugDrugClear = useCallback(() => {
+    setDrug1('');
+    setDrug2('');
+    setDrug3('');
+    setDrug4('');
+    setDrugsToCheck(undefined);
+    setDrugDrugSearchPerformed(false);
+    setDrugDrugError(null);
+  }, []);
+
+  const handleLoadExample = useCallback((exampleId: string) => {
     const result = loadExampleSet(exampleId);
     setDrug1(result.drug1);
     setDrug2(result.drug2);
     setDrug3(result.drug3);
     setDrug4(result.drug4);
-    setDrugDrugError(null);
+    setDrugsToCheck(undefined);
     setDrugDrugSearchPerformed(false);
+    setDrugDrugError(null);
   }, []);
 
   // Drug-Food handlers
-  const handleCheckDrugFoodInteractions = useCallback(() => {
+  const handleDrugFoodCheck = useCallback(() => {
     const drugs = [dfDrug1, dfDrug2].filter(d => d.trim() !== '');
     const foods = [dfFood1, dfFood2].filter(f => f.trim() !== '');
 
-    // Validation
     if (drugs.length === 0) {
-      setDrugFoodError('Please enter at least one drug to check interactions.');
-      setDrugFoodSearchPerformed(false);
+      setDrugFoodError('Please enter at least 1 drug');
       return;
     }
 
     if (foods.length === 0) {
-      setDrugFoodError('Please enter at least one food item to check interactions.');
-      setDrugFoodSearchPerformed(false);
+      setDrugFoodError('Please enter at least 1 food');
       return;
     }
 
     const drugDuplicates = findDuplicateNames(drugs);
     if (drugDuplicates.length > 0) {
-      setDrugFoodError('Please enter different drugs. Duplicate drug names detected.');
-      setDrugFoodSearchPerformed(false);
+      setDrugFoodError(`Duplicate drugs detected: ${drugDuplicates.join(', ')}`);
       return;
     }
 
     const foodDuplicates = findDuplicateNames(foods);
     if (foodDuplicates.length > 0) {
-      setDrugFoodError('Please enter different foods. Duplicate food names detected.');
-      setDrugFoodSearchPerformed(false);
+      setDrugFoodError(`Duplicate foods detected: ${foodDuplicates.join(', ')}`);
       return;
     }
 
-    // Clear error and perform check
     setDrugFoodError(null);
     setDfDrugsToCheck(drugs);
     setDfFoodsToCheck(foods);
     setDrugFoodSearchPerformed(true);
   }, [dfDrug1, dfDrug2, dfFood1, dfFood2]);
 
+  const handleDrugFoodClear = useCallback(() => {
+    setDfDrug1('');
+    setDfDrug2('');
+    setDfFood1('');
+    setDfFood2('');
+    setDfDrugsToCheck(undefined);
+    setDfFoodsToCheck(undefined);
+    setDrugFoodSearchPerformed(false);
+    setDrugFoodError(null);
+  }, []);
+
   // Food-Food handlers
-  const handleCheckFoodFoodInteractions = useCallback(() => {
+  const handleFoodFoodCheck = useCallback(() => {
     const foods = [food1, food2, food3, food4].filter(f => f.trim() !== '');
 
-    // Validation
     if (foods.length < 2) {
-      setFoodFoodError('Please enter at least two food items to check interactions.');
-      setFoodFoodSearchPerformed(false);
+      setFoodFoodError('Please enter at least 2 foods');
       return;
     }
 
     const duplicates = findDuplicateNames(foods);
     if (duplicates.length > 0) {
-      setFoodFoodError('Please enter different foods. Duplicate food names detected.');
-      setFoodFoodSearchPerformed(false);
+      setFoodFoodError(`Duplicate foods detected: ${duplicates.join(', ')}`);
       return;
     }
 
-    // Clear error and perform check
     setFoodFoodError(null);
     setFoodsToCheck(foods);
     setFoodFoodSearchPerformed(true);
   }, [food1, food2, food3, food4]);
 
-  // Overall summary for Drug-Drug
+  const handleFoodFoodClear = useCallback(() => {
+    setFood1('');
+    setFood2('');
+    setFood3('');
+    setFood4('');
+    setFoodsToCheck(undefined);
+    setFoodFoodSearchPerformed(false);
+    setFoodFoodError(null);
+  }, []);
+
+  // Overall summary for Drug-Drug interactions
   const overallSummary = useMemo(() => {
     if (!multiDrugQuery.data || multiDrugQuery.data.length === 0) return null;
-    return generateOverallSummary(multiDrugQuery.data as any);
+    
+    // Convert DrugDrugInteractionResult[] to ClinicallyOrientedInteraction[] format
+    const clinicalInteractions = multiDrugQuery.data.map(interaction => ({
+      drugs: interaction.drugs,
+      interactionType: interaction.interactionType,
+      description: interaction.description,
+      clinicalEffects: interaction.clinicalEffects,
+      toxicityRisk: interaction.toxicityRisk,
+      managementRecommendations: interaction.managementRecommendations,
+      severity: interaction.severity,
+      evidenceLevel: interaction.evidenceLevel,
+      references: interaction.references,
+    }));
+    
+    return generateOverallSummary(clinicalInteractions);
   }, [multiDrugQuery.data]);
 
   return (
     <div className="space-y-6">
-      <Card className="border-stone-200 dark:border-stone-700 bg-gradient-to-br from-stone-50 to-white dark:from-stone-900 dark:to-stone-800">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-            <GitCompare className="h-6 w-6 text-emerald-600" />
-            Drug Interaction Checker
-          </CardTitle>
-          <CardDescription className="text-stone-600 dark:text-stone-400">
-            Check for potential interactions between drugs, foods, and combinations
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      <Tabs defaultValue="drug-drug" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-stone-100 dark:bg-stone-800">
-          <TabsTrigger value="drug-drug" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            <Pill className="h-4 w-4 mr-2" />
-            Drug-Drug
-          </TabsTrigger>
-          <TabsTrigger value="drug-food" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            <Apple className="h-4 w-4 mr-2" />
-            Drug-Food
-          </TabsTrigger>
-          <TabsTrigger value="food-food" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            <UtensilsCrossed className="h-4 w-4 mr-2" />
-            Food-Food
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Drug-Drug Tab */}
-        <TabsContent value="drug-drug" className="space-y-4">
-          <Card className="border-stone-200 dark:border-stone-700">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-                Enter Medications (2-4 drugs)
-              </CardTitle>
-              <CardDescription className="text-stone-600 dark:text-stone-400">
-                Enter 2 to 4 medication names to check for potential interactions
+      <Card className="border-stone-200 dark:border-stone-700">
+        <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border-b border-stone-200 dark:border-stone-700">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-lg bg-emerald-600 dark:bg-emerald-500">
+              <GitCompare className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-3xl font-bold text-stone-900 dark:text-stone-100">Drug Interaction Checker</CardTitle>
+              <CardDescription className="text-stone-700 dark:text-stone-300 mt-1">
+                Check for Drug-Drug, Drug-Food, and Food-Food interactions using built-in datasets
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="drug1">Drug 1 *</Label>
-                  <NameAutocompleteInput
-                    id="drug1"
-                    value={drug1}
-                    onChange={setDrug1}
-                    suggestions={drugSuggestions}
-                    placeholder="e.g., Warfarin"
-                  />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-6">
+          <Tabs defaultValue="drug-drug" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="drug-drug" className="flex items-center gap-2">
+                <Pill className="h-4 w-4" />
+                Drug-Drug
+              </TabsTrigger>
+              <TabsTrigger value="drug-food" className="flex items-center gap-2">
+                <Apple className="h-4 w-4" />
+                Drug-Food
+              </TabsTrigger>
+              <TabsTrigger value="food-food" className="flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                Food-Food
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Drug-Drug Tab */}
+            <TabsContent value="drug-drug" className="space-y-6 mt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold text-stone-800 dark:text-stone-100">
+                    Enter 2-4 Drug Names
+                  </Label>
+                  <Select onValueChange={handleLoadExample}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Load Example" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drugInteractionExamples.map((example) => (
+                        <SelectItem key={example.id} value={example.id}>
+                          {example.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="drug2">Drug 2 *</Label>
-                  <NameAutocompleteInput
-                    id="drug2"
-                    value={drug2}
-                    onChange={setDrug2}
-                    suggestions={drugSuggestions}
-                    placeholder="e.g., Aspirin"
-                  />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="drug1" className="text-sm font-medium mb-2 block">Drug 1</Label>
+                    <NameAutocompleteInput
+                      id="drug1"
+                      value={drug1}
+                      onChange={setDrug1}
+                      suggestions={drugSuggestions}
+                      placeholder="Drug 1 (required)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="drug2" className="text-sm font-medium mb-2 block">Drug 2</Label>
+                    <NameAutocompleteInput
+                      id="drug2"
+                      value={drug2}
+                      onChange={setDrug2}
+                      suggestions={drugSuggestions}
+                      placeholder="Drug 2 (required)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="drug3" className="text-sm font-medium mb-2 block">Drug 3</Label>
+                    <NameAutocompleteInput
+                      id="drug3"
+                      value={drug3}
+                      onChange={setDrug3}
+                      suggestions={drugSuggestions}
+                      placeholder="Drug 3 (optional)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="drug4" className="text-sm font-medium mb-2 block">Drug 4</Label>
+                    <NameAutocompleteInput
+                      id="drug4"
+                      value={drug4}
+                      onChange={setDrug4}
+                      suggestions={drugSuggestions}
+                      placeholder="Drug 4 (optional)"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="drug3">Drug 3 (Optional)</Label>
-                  <NameAutocompleteInput
-                    id="drug3"
-                    value={drug3}
-                    onChange={setDrug3}
-                    suggestions={drugSuggestions}
-                    placeholder="e.g., Metformin"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="drug4">Drug 4 (Optional)</Label>
-                  <NameAutocompleteInput
-                    id="drug4"
-                    value={drug4}
-                    onChange={setDrug4}
-                    suggestions={drugSuggestions}
-                    placeholder="e.g., Lisinopril"
-                  />
+
+                {drugDrugError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Validation Error</AlertTitle>
+                    <AlertDescription>{drugDrugError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="flex gap-3">
+                  <Button onClick={handleDrugDrugCheck} className="flex-1">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Check Interactions
+                  </Button>
+                  <Button onClick={handleDrugDrugClear} variant="outline">
+                    Clear
+                  </Button>
                 </div>
               </div>
 
-              {drugDrugError && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Validation Error</AlertTitle>
-                  <AlertDescription>{drugDrugError}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={handleCheckDrugDrugInteractions} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Check Interactions
-                </Button>
-                <Select onValueChange={handleLoadDrugExample}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Load Example" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {drugInteractionExamples.map((example) => (
-                      <SelectItem key={example.id} value={example.id}>
-                        {example.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Drug-Drug Results */}
-          {drugDrugSearchPerformed && (
-            <>
-              {multiDrugQuery.isLoading ? (
-                <Card className="border-stone-200 dark:border-stone-700">
-                  <CardHeader>
-                    <Skeleton className="h-6 w-48" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                  </CardContent>
-                </Card>
-              ) : multiDrugQuery.error ? (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>
-                    Failed to check interactions: {(multiDrugQuery.error as Error).message}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  {overallSummary && overallSummary.hasAnyData && (
-                    <Card className="border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950">
-                      <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-emerald-800 dark:text-emerald-100 flex items-center gap-2">
-                          <Shield className="h-5 w-5" />
-                          Overall Safety Summary
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {overallSummary.highestSeverity && (
-                          <div>
-                            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Highest Severity: </span>
-                            <Badge variant={getSeverityBadgeVariant(overallSummary.highestSeverity)} className="ml-2">
-                              {formatSeverity(overallSummary.highestSeverity)}
-                            </Badge>
-                          </div>
-                        )}
-                        {overallSummary.highestToxicityRisk && (
-                          <div>
-                            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Highest Toxicity Risk: </span>
-                            <Badge variant={getToxicityBadgeVariant(overallSummary.highestToxicityRisk)} className="ml-2">
-                              {formatToxicityRisk(overallSummary.highestToxicityRisk)}
-                            </Badge>
-                          </div>
-                        )}
-                        {overallSummary.highestSeverityPairs.length > 0 && (
-                          <div>
-                            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Critical Pairs: </span>
-                            <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                              {overallSummary.highestSeverityPairs.join(', ')}
-                            </span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+              {drugDrugSearchPerformed && (
+                <div className="space-y-6">
+                  {multiDrugQuery.isLoading && (
+                    <div className="space-y-4">
+                      <Skeleton className="h-32 w-full" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
                   )}
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-                      Pairwise Interaction Results
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4">
-                      {multiDrugQuery.data?.map((interaction, idx) => (
-                        <DrugPairCard
+                  {multiDrugQuery.isError && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        Failed to check interactions. Please try again.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {multiDrugQuery.data && multiDrugQuery.data.length > 0 && (
+                    <>
+                      {overallSummary && overallSummary.hasAnyData && (
+                        <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20">
+                          <CardHeader>
+                            <CardTitle className="text-lg font-semibold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                              <Info className="h-5 w-5" />
+                              Overall Summary
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                                  Total Pairs Checked
+                                </p>
+                                <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">
+                                  {multiDrugQuery.data.length}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                                  Interactions Found
+                                </p>
+                                <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">
+                                  {multiDrugQuery.data.filter(hasRealDrugDrugData).length}
+                                </p>
+                              </div>
+                            </div>
+
+                            {overallSummary.highestSeverity && (
+                              <div>
+                                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200 mb-1">
+                                  Highest Severity
+                                </p>
+                                <Badge variant={getSeverityBadgeVariant(overallSummary.highestSeverity)}>
+                                  {formatSeverity(overallSummary.highestSeverity)}
+                                </Badge>
+                              </div>
+                            )}
+
+                            {overallSummary.highestToxicityRisk && (
+                              <div>
+                                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200 mb-1">
+                                  Highest Toxicity Risk
+                                </p>
+                                <Badge variant={getToxicityBadgeVariant(overallSummary.highestToxicityRisk)}>
+                                  {formatToxicityRisk(overallSummary.highestToxicityRisk)}
+                                </Badge>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+                          Pairwise Interactions ({multiDrugQuery.data.length})
+                        </h3>
+                        {multiDrugQuery.data.map((interaction, idx) => (
+                          <DrugPairCard
+                            key={idx}
+                            interaction={interaction}
+                            getSeverityBadgeVariant={getSeverityBadgeVariant}
+                            getToxicityBadgeVariant={getToxicityBadgeVariant}
+                            getInteractionTypeLabel={getInteractionTypeLabel}
+                            getEvidenceLevelLabel={getEvidenceLevelLabel}
+                            hasRealData={hasRealDrugDrugData}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Drug-Food Tab */}
+            <TabsContent value="drug-food" className="space-y-6 mt-6">
+              <div className="space-y-4">
+                <Label className="text-base font-semibold text-stone-800 dark:text-stone-100">
+                  Enter Drugs and Foods
+                </Label>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 block">
+                      Drugs (1-2)
+                    </Label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="dfDrug1" className="text-sm font-medium mb-2 block">Drug 1</Label>
+                        <NameAutocompleteInput
+                          id="dfDrug1"
+                          value={dfDrug1}
+                          onChange={setDfDrug1}
+                          suggestions={drugSuggestions}
+                          placeholder="Drug 1 (required)"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dfDrug2" className="text-sm font-medium mb-2 block">Drug 2</Label>
+                        <NameAutocompleteInput
+                          id="dfDrug2"
+                          value={dfDrug2}
+                          onChange={setDfDrug2}
+                          suggestions={drugSuggestions}
+                          placeholder="Drug 2 (optional)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 block">
+                      Foods (1-2)
+                    </Label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="dfFood1" className="text-sm font-medium mb-2 block">Food 1</Label>
+                        <NameAutocompleteInput
+                          id="dfFood1"
+                          value={dfFood1}
+                          onChange={setDfFood1}
+                          suggestions={foodSuggestions}
+                          placeholder="Food 1 (required)"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dfFood2" className="text-sm font-medium mb-2 block">Food 2</Label>
+                        <NameAutocompleteInput
+                          id="dfFood2"
+                          value={dfFood2}
+                          onChange={setDfFood2}
+                          suggestions={foodSuggestions}
+                          placeholder="Food 2 (optional)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {drugFoodError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Validation Error</AlertTitle>
+                    <AlertDescription>{drugFoodError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="flex gap-3">
+                  <Button onClick={handleDrugFoodCheck} className="flex-1">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Check Interactions
+                  </Button>
+                  <Button onClick={handleDrugFoodClear} variant="outline">
+                    Clear
+                  </Button>
+                </div>
+              </div>
+
+              {drugFoodSearchPerformed && (
+                <div className="space-y-6">
+                  {drugFoodQuery.isLoading && (
+                    <div className="space-y-4">
+                      <Skeleton className="h-32 w-full" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
+                  )}
+
+                  {drugFoodQuery.isError && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        Failed to check interactions. Please try again.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {drugFoodQuery.data && drugFoodQuery.data.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+                        Drug-Food Interactions ({drugFoodQuery.data.length})
+                      </h3>
+                      {drugFoodQuery.data.map((interaction, idx) => (
+                        <DrugFoodCard
                           key={idx}
                           interaction={interaction}
-                          getSeverityBadgeVariant={getSeverityBadgeVariant}
-                          getToxicityBadgeVariant={getToxicityBadgeVariant}
-                          getInteractionTypeLabel={getInteractionTypeLabel}
-                          getEvidenceLevelLabel={getEvidenceLevelLabel}
-                          hasRealData={hasRealDrugDrugData}
+                          hasRealData={hasRealDrugFoodData}
                         />
                       ))}
                     </div>
-                  </div>
-                </>
+                  )}
+                </div>
               )}
-            </>
-          )}
-        </TabsContent>
+            </TabsContent>
 
-        {/* Drug-Food Tab */}
-        <TabsContent value="drug-food" className="space-y-4">
-          <Card className="border-stone-200 dark:border-stone-700">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-                Enter Drugs and Foods
-              </CardTitle>
-              <CardDescription className="text-stone-600 dark:text-stone-400">
-                Enter drugs and food items to check for potential interactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Food-Food Tab */}
+            <TabsContent value="food-food" className="space-y-6 mt-6">
               <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-2">Drugs</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="df-drug1">Drug 1 *</Label>
-                      <NameAutocompleteInput
-                        id="df-drug1"
-                        value={dfDrug1}
-                        onChange={setDfDrug1}
-                        suggestions={drugSuggestions}
-                        placeholder="e.g., Warfarin"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="df-drug2">Drug 2 (Optional)</Label>
-                      <NameAutocompleteInput
-                        id="df-drug2"
-                        value={dfDrug2}
-                        onChange={setDfDrug2}
-                        suggestions={drugSuggestions}
-                        placeholder="e.g., Metformin"
-                      />
-                    </div>
+                <Label className="text-base font-semibold text-stone-800 dark:text-stone-100">
+                  Enter 2-4 Food Names
+                </Label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="food1" className="text-sm font-medium mb-2 block">Food 1</Label>
+                    <NameAutocompleteInput
+                      id="food1"
+                      value={food1}
+                      onChange={setFood1}
+                      suggestions={foodSuggestions}
+                      placeholder="Food 1 (required)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="food2" className="text-sm font-medium mb-2 block">Food 2</Label>
+                    <NameAutocompleteInput
+                      id="food2"
+                      value={food2}
+                      onChange={setFood2}
+                      suggestions={foodSuggestions}
+                      placeholder="Food 2 (required)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="food3" className="text-sm font-medium mb-2 block">Food 3</Label>
+                    <NameAutocompleteInput
+                      id="food3"
+                      value={food3}
+                      onChange={setFood3}
+                      suggestions={foodSuggestions}
+                      placeholder="Food 3 (optional)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="food4" className="text-sm font-medium mb-2 block">Food 4</Label>
+                    <NameAutocompleteInput
+                      id="food4"
+                      value={food4}
+                      onChange={setFood4}
+                      suggestions={foodSuggestions}
+                      placeholder="Food 4 (optional)"
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-2">Foods</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="df-food1">Food 1 *</Label>
-                      <NameAutocompleteInput
-                        id="df-food1"
-                        value={dfFood1}
-                        onChange={setDfFood1}
-                        suggestions={foodSuggestions}
-                        placeholder="e.g., Grapefruit"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="df-food2">Food 2 (Optional)</Label>
-                      <NameAutocompleteInput
-                        id="df-food2"
-                        value={dfFood2}
-                        onChange={setDfFood2}
-                        suggestions={foodSuggestions}
-                        placeholder="e.g., Alcohol"
-                      />
-                    </div>
-                  </div>
+                {foodFoodError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Validation Error</AlertTitle>
+                    <AlertDescription>{foodFoodError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="flex gap-3">
+                  <Button onClick={handleFoodFoodCheck} className="flex-1">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Check Interactions
+                  </Button>
+                  <Button onClick={handleFoodFoodClear} variant="outline">
+                    Clear
+                  </Button>
                 </div>
               </div>
 
-              {drugFoodError && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Validation Error</AlertTitle>
-                  <AlertDescription>{drugFoodError}</AlertDescription>
-                </Alert>
-              )}
+              {foodFoodSearchPerformed && (
+                <div className="space-y-6">
+                  {foodFoodQuery.isLoading && (
+                    <div className="space-y-4">
+                      <Skeleton className="h-32 w-full" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
+                  )}
 
-              <Button onClick={handleCheckDrugFoodInteractions} className="bg-emerald-600 hover:bg-emerald-700">
-                <Shield className="h-4 w-4 mr-2" />
-                Check Interactions
-              </Button>
-            </CardContent>
-          </Card>
+                  {foodFoodQuery.isError && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        Failed to check interactions. Please try again.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
-          {/* Drug-Food Results */}
-          {drugFoodSearchPerformed && (
-            <>
-              {drugFoodQuery.isLoading ? (
-                <Card className="border-stone-200 dark:border-stone-700">
-                  <CardHeader>
-                    <Skeleton className="h-6 w-48" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                  </CardContent>
-                </Card>
-              ) : drugFoodQuery.error ? (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>
-                    Failed to check interactions: {(drugFoodQuery.error as Error).message}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-                    Drug-Food Interaction Results
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    {drugFoodQuery.data?.map((interaction, idx) => (
-                      <DrugFoodCard
-                        key={idx}
-                        interaction={interaction}
-                        hasRealData={hasRealDrugFoodData}
-                      />
-                    ))}
-                  </div>
+                  {foodFoodQuery.data && foodFoodQuery.data.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+                        Food-Food Interactions ({foodFoodQuery.data.length})
+                      </h3>
+                      {foodFoodQuery.data.map((interaction, idx) => (
+                        <FoodFoodCard
+                          key={idx}
+                          interaction={interaction}
+                          hasRealData={hasRealFoodFoodData}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
-            </>
-          )}
-        </TabsContent>
-
-        {/* Food-Food Tab */}
-        <TabsContent value="food-food" className="space-y-4">
-          <Card className="border-stone-200 dark:border-stone-700">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-                Enter Food Items (2-4 foods)
-              </CardTitle>
-              <CardDescription className="text-stone-600 dark:text-stone-400">
-                Enter 2 to 4 food items to check for potential interactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="food1">Food 1 *</Label>
-                  <NameAutocompleteInput
-                    id="food1"
-                    value={food1}
-                    onChange={setFood1}
-                    suggestions={foodSuggestions}
-                    placeholder="e.g., Grapefruit"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="food2">Food 2 *</Label>
-                  <NameAutocompleteInput
-                    id="food2"
-                    value={food2}
-                    onChange={setFood2}
-                    suggestions={foodSuggestions}
-                    placeholder="e.g., Alcohol"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="food3">Food 3 (Optional)</Label>
-                  <NameAutocompleteInput
-                    id="food3"
-                    value={food3}
-                    onChange={setFood3}
-                    suggestions={foodSuggestions}
-                    placeholder="e.g., Green Tea"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="food4">Food 4 (Optional)</Label>
-                  <NameAutocompleteInput
-                    id="food4"
-                    value={food4}
-                    onChange={setFood4}
-                    suggestions={foodSuggestions}
-                    placeholder="e.g., Milk"
-                  />
-                </div>
-              </div>
-
-              {foodFoodError && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Validation Error</AlertTitle>
-                  <AlertDescription>{foodFoodError}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button onClick={handleCheckFoodFoodInteractions} className="bg-emerald-600 hover:bg-emerald-700">
-                <Shield className="h-4 w-4 mr-2" />
-                Check Interactions
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Food-Food Results */}
-          {foodFoodSearchPerformed && (
-            <>
-              {foodFoodQuery.isLoading ? (
-                <Card className="border-stone-200 dark:border-stone-700">
-                  <CardHeader>
-                    <Skeleton className="h-6 w-48" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                  </CardContent>
-                </Card>
-              ) : foodFoodQuery.error ? (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>
-                    Failed to check interactions: {(foodFoodQuery.error as Error).message}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-                    Food-Food Interaction Results
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    {foodFoodQuery.data?.map((interaction, idx) => (
-                      <FoodFoodCard
-                        key={idx}
-                        interaction={interaction}
-                        hasRealData={hasRealFoodFoodData}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,78 +1,101 @@
 {
   "kind": "build_request",
-  "title": "Fix Drug Interaction checker to show fully updated results after manual entry (Drug-Drug, Drug-Food, Food-Food)",
+  "title": "Update full drug list dataset and add verification that additions/updates apply correctly",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
+      "text": "Update the application’s curated drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-10"
+          "msg-5",
+          "msg-9",
+          "msg-14",
+          "msg-18"
         ],
         "quotes": [
-          "In Drug interaction section when manually putting data and check Drug-Drug, Drug-Food and Food-Food interaction, when click on check interactions must show the fully up-dated results"
+          "update the entire list and make it up-to-date, and after that do a verification so everything add and update correctly",
+          "add and update the entire drug list",
+          "yes"
         ]
       },
       "acceptanceCriteria": [
-        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Drug tab, the results list updates to match the current input values (not previous inputs).",
-        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Food tab, the results list updates to match the current input values (not previous inputs).",
-        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Food-Food tab, the results list updates to match the current input values (not previous inputs).",
-        "The interaction hooks provide working loading and error states (isLoading/isPending/error) so the UI can show a spinner/skeleton and an error message when needed.",
-        "The query keys include the normalized input set(s) so re-checking after editing inputs always triggers a fresh computation and re-render."
+        "`frontend/src/data/curatedDrugDataset.ts` contains the updated complete dataset (no build/type errors).",
+        "All entries in the dataset conform to the `Drug` type (including valid `DrugStatus` and `DrugSource` variants).",
+        "Duplicate drug names are deterministically deduplicated using the existing `deduplicateDrugs` utility rules (banned > approved; newer date > older date)."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
-      "target": "frontend",
+      "text": "Ensure backend drug query methods return complete datasets (no truncation): `getAllDrugs` returns all approved + banned drugs, and filtered endpoints (approved/banned) return the full correctly filtered lists, independent of any user profile state.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-10"
+          "msg-5",
+          "msg-9"
         ],
         "quotes": [
-          "please kindly check and fix it the drug interaction section when manually putting data and check in Drug-Drug, Drug-Food and Food-Food interaction, when click on check interactions must show the fully up dated results and do the validation process",
-          "In Drug interaction section when manually putting data and check Drug-Drug, Drug-Food and Food-Food interaction, when click on check interactions must show the fully up-dated results"
+          "update the entire list and make it up-to-date, and after that do a verification so everything add and update correctly",
+          "add and update the entire drug list"
         ]
       },
       "acceptanceCriteria": [
-        "Drug-Drug: If fewer than 2 medications are entered, show: \"Please enter at least two medications to check interactions.\" and do not run the check.",
-        "Drug-Drug: If duplicate drug names are entered (case/spacing/punctuation-insensitive), show: \"Please enter different medications. Duplicate drug names detected.\" and do not run the check.",
-        "Drug-Food: If no drug is entered or no food is entered, show a clear validation message (English) and do not run the check.",
-        "Drug-Food: If duplicate drugs or duplicate foods are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check.",
-        "Food-Food: If fewer than 2 foods are entered, show a clear validation message (English) and do not run the check.",
-        "Food-Food: If duplicate food names are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check."
+        "Calling the backend drug-list query used by `useGetAllDrugs()` returns a list whose length matches the authoritative stored drug table size (no missing tail items).",
+        "Approved-only and banned-only results exactly match filtering by `DrugStatus` over the full stored list.",
+        "Results are stable across refreshes and do not depend on any profile loading state in the frontend."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
-      "target": "frontend",
+      "text": "Add a verification workflow that runs after a drug-list refresh/update to confirm that adds and updates were applied correctly, and expose the verification result to the UI.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-10"
+          "msg-5",
+          "msg-18"
         ],
         "quotes": [
-          "when click on check interactions must show the fully up-dated results"
+          "after that do a verification so everything add and update correctly",
+          "yes"
         ]
       },
       "acceptanceCriteria": [
-        "Drug-Drug results are produced from the local drug-drug interaction data source and are returned as an array of interaction cards (including \"No interaction data found...\" cards for missing pairs) that matches the pairings from the entered drugs.",
-        "Drug-Food results are produced from the local drug-food interaction dataset/index for each selected drug-food combination, returning a consistent result shape used by the existing UI cards.",
-        "Food-Food results are produced from the local food-food interaction dataset/index for each unique food pair entered, returning a consistent result shape used by the existing UI cards.",
-        "Performing checks does not require any Motoko/backend changes and works even if the actor is unavailable."
+        "A single user action (or existing refresh action) triggers: (1) update/refresh of the drug dataset and (2) a verification step.",
+        "Verification checks at minimum: total count > 0, no empty `name` values, no invalid/missing `status`, and no duplicate drugs when normalized by the same rules used in the curated dataset.",
+        "The UI shows a clear success/failure outcome for verification, and on failure provides a human-readable summary (English) of what failed (e.g., duplicate count, invalid entries count)."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Update the Drug Database UI to reliably render the entire corresponding dataset in the All Drugs / Approved / Banned tabs, with client-side search/category filters applied to the full list (not a partially loaded subset). If the list is large, implement a UI strategy (pagination or virtualization) that still allows viewing the full list while preserving existing search, CSV export, and the drug details modal.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "update the entire list and make it up-to-date, and after that do a verification so everything add and update correctly"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The Drug Database module renders all items returned by the backend for each tab (All/Approved/Banned), without silently dropping items due to performance limits.",
+        "Search and category filtering operate over the full fetched dataset.",
+        "CSV export includes all currently filtered rows (not just the visible subset, if pagination/virtualization is used).",
+        "Drug details modal continues to open and display details for any item in the dataset."
       ]
     }
   ],
   "constraints": [
-    "Do not modify any files under frontend/src/components/ui (Shadcn components are read-only and must be composed, not edited).",
-    "Do not edit frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts, or frontend/src/main.tsx (immutable paths)."
+    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional canisters/services).",
+    "Do not edit any files under `frontend/src/components/ui` (compose existing components only).",
+    "Do not modify immutable frontend hook entrypoints: `frontend/src/hooks/useInternetIdentity.ts` / `.tsx`, `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`.",
+    "Use English for any new user-facing UI text."
   ],
   "nonGoals": [
-    "Adding new external APIs for interaction checking (use existing local datasets/services only).",
-    "Changing backend (Motoko) interaction logic or adding new canister methods unless discovered to be strictly necessary to fix stale UI updates."
+    "Adding third-party authentication providers (only Internet Identity is supported).",
+    "Integrating external databases or non-Internet-Computer storage backends.",
+    "Building real-time features (WebSockets/push) for drug list updates."
   ],
   "imageRequirements": {
     "required": [],

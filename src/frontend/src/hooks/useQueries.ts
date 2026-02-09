@@ -18,8 +18,10 @@ import {
   CategorizedDrugs,
   DrugSafetyAdvisory,
   PrescriberDetails,
+  DrugVerificationResult,
 } from '../backend';
-import { multiSourceDrugService } from '../services/multiSourceDrugService';
+import { MultiSourceDrugService } from '../services/multiSourceDrugService';
+import { drugDrugInteractionService } from '../services/drugDrugInteractionService';
 import {
   computeMultiDrugInteractions,
   computeDrugFoodInteractions,
@@ -239,7 +241,7 @@ export function useAddAdr() {
   });
 }
 
-// User Profile queries
+// User Profile queries with separated actor and profile fetch states
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
@@ -253,10 +255,20 @@ export function useGetCallerUserProfile() {
     retry: false,
   });
 
+  // Separate states for better control
+  const actorReady = !!actor && !actorFetching;
+  const profileFetching = query.isFetching && actorReady;
+
   return {
     ...query,
+    // Actor is still initializing
     isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
+    // Profile query has completed at least once
+    isFetched: actorReady && query.isFetched,
+    // Actor is ready and initialized
+    actorReady,
+    // Profile query is actively fetching (not just waiting for actor)
+    profileFetching,
   };
 }
 
@@ -417,141 +429,163 @@ export function useCheckFourDrugInteraction() {
   });
 }
 
-// Client-side interaction check hooks using React Query
+// Client-side interaction check hooks using React Query - RETURNS ARRAYS
 export function useCheckMultiDrugInteraction(drugs?: string[]) {
   const queryKey = drugs ? normalizeInputsForQueryKey(drugs) : 'empty';
 
   return useQuery<DrugDrugInteractionResult[]>({
-    queryKey: ['multiDrugInteraction', queryKey],
-    queryFn: () => {
-      if (!drugs || drugs.length < 2) {
-        return [];
-      }
-      return computeMultiDrugInteractions(drugs);
-    },
+    queryKey: ['drugInteractions', queryKey],
+    queryFn: () => computeMultiDrugInteractions(drugs || []),
     enabled: !!drugs && drugs.length >= 2,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }
 
-export function useCheckDrugFoodInteractions(drugs?: string[], foods?: string[]) {
-  const drugsKey = drugs ? normalizeInputsForQueryKey(drugs) : 'empty';
-  const foodsKey = foods ? normalizeInputsForQueryKey(foods) : 'empty';
+export function useCheckDrugFoodInteraction(drugs?: string[], foods?: string[]) {
+  const queryKey = {
+    drugs: drugs ? normalizeInputsForQueryKey(drugs) : 'empty',
+    foods: foods ? normalizeInputsForQueryKey(foods) : 'empty',
+  };
 
   return useQuery<DrugFoodInteractionResult[]>({
-    queryKey: ['drugFoodInteraction', drugsKey, foodsKey],
-    queryFn: () => {
-      if (!drugs || !foods || drugs.length === 0 || foods.length === 0) {
-        return [];
-      }
-      return computeDrugFoodInteractions(drugs, foods);
-    },
-    enabled: !!drugs && !!foods && drugs.length > 0 && foods.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: ['drugFoodInteractions', queryKey],
+    queryFn: () => computeDrugFoodInteractions(drugs || [], foods || []),
+    enabled: !!drugs && drugs.length > 0 && !!foods && foods.length > 0,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
-export function useCheckFoodFoodInteractions(foods?: string[]) {
+export function useCheckFoodFoodInteraction(foods?: string[]) {
   const queryKey = foods ? normalizeInputsForQueryKey(foods) : 'empty';
 
   return useQuery<FoodFoodInteractionResult[]>({
-    queryKey: ['foodFoodInteraction', queryKey],
-    queryFn: () => {
-      if (!foods || foods.length < 2) {
-        return [];
-      }
-      return computeFoodFoodInteractions(foods);
-    },
+    queryKey: ['foodFoodInteractions', queryKey],
+    queryFn: () => computeFoodFoodInteractions(foods || []),
     enabled: !!foods && foods.length >= 2,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }
 
-// Drug Database queries
+// Drug Database queries - INDEPENDENT OF PROFILE LOADING
+// These queries only depend on actor availability, not on isFetching state
 export function useGetAllDrugs() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
 
   return useQuery<Drug[]>({
     queryKey: ['allDrugs'],
     queryFn: async () => {
       if (!actor) return [];
-      // Use the service's getCachedData method
-      return multiSourceDrugService.getCachedData();
+      return actor.getAllDrugs();
     },
-    enabled: !!actor && !isFetching,
+    // Only require actor to exist, don't wait for isFetching
+    enabled: !!actor,
+    staleTime: 1000 * 60 * 15,
+  });
+}
+
+export function useGetApprovedDrugs() {
+  const { actor } = useActor();
+
+  return useQuery<Drug[]>({
+    queryKey: ['approvedDrugs'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getApprovedDrugs();
+    },
+    // Only require actor to exist, don't wait for isFetching
+    enabled: !!actor,
+    staleTime: 1000 * 60 * 15,
+  });
+}
+
+export function useGetBannedDrugs() {
+  const { actor } = useActor();
+
+  return useQuery<Drug[]>({
+    queryKey: ['bannedDrugs'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getBannedDrugs();
+    },
+    // Only require actor to exist, don't wait for isFetching
+    enabled: !!actor,
+    staleTime: 1000 * 60 * 15,
   });
 }
 
 export function useGetCategorizedDrugs() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
 
   return useQuery<CategorizedDrugs>({
     queryKey: ['categorizedDrugs'],
     queryFn: async () => {
       if (!actor) {
         return {
+          all: [],
           antibiotics: [],
           painkillers: [],
           fdcs: [],
           vitamins: [],
           others: [],
-          all: [],
         };
       }
       return actor.getCategorizedDrugs();
     },
-    enabled: !!actor && !isFetching,
+    // Only require actor to exist, don't wait for isFetching
+    enabled: !!actor,
+    staleTime: 1000 * 60 * 15,
   });
 }
 
-export function useSearchDrugs() {
+export function useSearchDrugs(searchQuery: string) {
   const { actor } = useActor();
 
-  return useMutation({
-    mutationFn: async (searchQuery: string) => {
-      if (!actor) throw new Error('Actor not available');
+  return useQuery<Drug[]>({
+    queryKey: ['searchDrugs', searchQuery],
+    queryFn: async () => {
+      if (!actor || !searchQuery) return [];
       return actor.searchDrugs(searchQuery);
     },
+    // Only require actor to exist, don't wait for isFetching
+    enabled: !!actor && !!searchQuery,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
-export function useGetDrugSafetyAdvisory() {
-  const { actor } = useActor();
-
-  return useMutation({
-    mutationFn: async (data: {
-      drug1: string;
-      drug2: string;
-      drug3: string;
-      drug4: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getDrugSafetyAdvisory(
-        data.drug1,
-        data.drug2,
-        data.drug3,
-        data.drug4
-      );
+// Multi-source drug service queries - CLIENT-SIDE ONLY
+export function useGetMultiSourceDrugs() {
+  return useQuery<Drug[]>({
+    queryKey: ['multiSourceDrugs'],
+    queryFn: async () => {
+      return MultiSourceDrugService.getCachedData();
     },
+    staleTime: 1000 * 60 * 60,
   });
 }
 
-// Multi-source drug service hooks (client-side)
 export function useGetMultiSourceLastUpdated() {
-  return useQuery({
+  return useQuery<Date | null>({
     queryKey: ['multiSourceLastUpdated'],
-    queryFn: () => {
-      return multiSourceDrugService.getLastUpdated();
+    queryFn: async () => {
+      return MultiSourceDrugService.getLastUpdated();
     },
+    staleTime: 1000 * 60,
   });
 }
 
 export function useGetMultiSourceSyncStatus() {
-  return useQuery({
+  return useQuery<{
+    cdsco: { status: string; lastSync: Date | null } | null;
+    mims: { status: string; lastSync: Date | null } | null;
+  }>({
     queryKey: ['multiSourceSyncStatus'],
-    queryFn: () => {
-      return multiSourceDrugService.getSyncStatus();
+    queryFn: async () => {
+      return {
+        cdsco: { status: 'idle', lastSync: MultiSourceDrugService.getLastUpdated() },
+        mims: { status: 'idle', lastSync: MultiSourceDrugService.getLastUpdated() },
+      };
     },
+    staleTime: 1000 * 60,
   });
 }
 
@@ -560,24 +594,60 @@ export function useRefreshMultiSourceData() {
 
   return useMutation({
     mutationFn: async () => {
-      await multiSourceDrugService.refresh();
+      await MultiSourceDrugService.refresh();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['multiSourceDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['multiSourceLastUpdated'] });
       queryClient.invalidateQueries({ queryKey: ['multiSourceSyncStatus'] });
     },
   });
 }
 
-// Drug-Drug Interaction Database hook (client-side stub)
+// Drug-Drug Interaction Database queries - CLIENT-SIDE ONLY
 export function useGetDrugDrugInteractionData() {
   return useQuery({
-    queryKey: ['drugDrugInteractionData'],
+    queryKey: ['drugDrugInteractionDatabase'],
     queryFn: async () => {
-      // Return empty array as stub - this would normally fetch from a service
-      return [] as any[];
+      return drugDrugInteractionService.getCachedData();
     },
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+// Drug Safety Advisory queries
+export function useGetDrugSafetyAdvisory(
+  drug1: string,
+  drug2: string,
+  drug3: string,
+  drug4: string
+) {
+  const { actor } = useActor();
+
+  return useQuery<DrugSafetyAdvisory>({
+    queryKey: ['drugSafetyAdvisory', drug1, drug2, drug3, drug4],
+    queryFn: async () => {
+      if (!actor) {
+        return {
+          pairwiseInteractions: [],
+          overallRisk: {
+            highestSeverityPair: undefined,
+            highestRiskLevel: undefined,
+            topRecommendation: undefined,
+            overallSeverity: undefined,
+          },
+          specialPopulations: {
+            pregnancy: undefined,
+            lactation: undefined,
+            pediatrics: undefined,
+            geriatrics: undefined,
+          },
+        };
+      }
+      return actor.getDrugSafetyAdvisory(drug1, drug2, drug3, drug4);
+    },
+    enabled: !!actor && !!drug1 && !!drug2 && !!drug3 && !!drug4,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -600,17 +670,48 @@ export function useSavePrescriberDetails() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      patientId: string;
-      details: PrescriberDetails;
-    }) => {
+    mutationFn: async (data: { patientId: string; prescriberDetails: PrescriberDetails }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.savePrescriberDetailsForPatient(data.patientId, data.details);
+      return actor.savePrescriberDetailsForPatient(data.patientId, data.prescriberDetails);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['prescriberDetails', variables.patientId],
       });
     },
+  });
+}
+
+// Drug Verification queries - NEW
+export function useRefreshAndVerifyDrugTable() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.refreshAndVerifyDrugTable();
+    },
+    onSuccess: () => {
+      // Invalidate all drug-related queries to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['allDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['approvedDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['bannedDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['lastDrugVerification'] });
+    },
+  });
+}
+
+export function useGetLastDrugVerification() {
+  const { actor } = useActor();
+
+  return useQuery<DrugVerificationResult | null>({
+    queryKey: ['lastDrugVerification'],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getLastDrugVerification();
+    },
+    enabled: !!actor,
+    staleTime: 1000 * 60 * 5,
   });
 }

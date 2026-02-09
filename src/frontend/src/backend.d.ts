@@ -195,6 +195,12 @@ export interface FourDrugInteractionInput {
     drug3: string;
     drug4: string;
 }
+export interface DrugVerificationResult {
+    verifiedBannedDrugs: Array<Drug>;
+    verificationTimestamp: Time;
+    allDrugs: Array<Drug>;
+    verifiedApprovedDrugs: Array<Drug>;
+}
 export interface AdverseDrugReaction {
     onsetDate?: Time;
     adrId: string;
@@ -312,6 +318,7 @@ export interface backendInterface {
     }>;
     getADRsByPatient(patientId: string): Promise<Array<AdverseDrugReaction>>;
     getAllDrugs(): Promise<Array<Drug>>;
+    getAllDrugsFromStore(): Promise<Array<Drug>>;
     getAllPatients(): Promise<Array<Patient>>;
     getApprovedDrugs(): Promise<Array<Drug>>;
     getBannedDrugs(): Promise<Array<Drug>>;
@@ -322,7 +329,9 @@ export interface backendInterface {
     getChatMessages(): Promise<Array<ChatMessage>>;
     getDrugSafetyAdvisory(drug1: string, drug2: string, drug3: string, drug4: string): Promise<DrugSafetyAdvisory>;
     getExternalResources(): Promise<Array<ExternalResource>>;
+    getFilteredDrugs(status: DrugStatus | null): Promise<Array<Drug>>;
     getLabResultsByPatient(patientId: string): Promise<Array<LabResults>>;
+    getLastDrugVerification(): Promise<DrugVerificationResult | null>;
     getMedicationsByPatient(patientId: string): Promise<Array<Medication>>;
     getPrescriberDetailsByPatientId(patientId: string): Promise<PrescriberDetails | null>;
     getPrescriptionImagesByPatient(patientId: string): Promise<Array<PrescriptionImage>>;
@@ -330,6 +339,7 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     initializeAccessControl(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    refreshAndVerifyDrugTable(): Promise<DrugVerificationResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     savePrescriberDetailsForPatient(patientId: string, prescriberDetails: PrescriberDetails): Promise<void>;
     searchDrugs(searchQuery: string): Promise<Array<Drug>>;

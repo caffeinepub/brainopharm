@@ -343,6 +343,13 @@ actor {
     #validationError : Text;
   };
 
+  public type DrugVerificationResult = {
+    allDrugs : [Drug];
+    verifiedApprovedDrugs : [Drug];
+    verifiedBannedDrugs : [Drug];
+    verificationTimestamp : Time.Time;
+  };
+
   let patients = Map.empty<Text, Patient>();
   let labResults = Map.empty<Text, LabResults>();
   let medications = Map.empty<Text, Medication>();
@@ -364,6 +371,8 @@ actor {
 
   let accessControlState = AccessControl.initState();
   var isAccessControlInitialized = false;
+  var lastDrugVerification : ?DrugVerificationResult = null;
+  var lastDrugTableRefresh : ?Time.Time = null;
 
   func addPatientInternal(
     name : Text,
@@ -800,8 +809,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func getAllDrugs() : async [Drug] {
-    // Public access - no authentication required for browsing drug database
+  public query func getAllDrugsFromStore() : async [Drug] {
     drugTableStore.values().toArray();
   };
 
@@ -812,16 +820,14 @@ actor {
     drugTableStore.add(drug.name, drug);
   };
 
-  public query ({ caller }) func searchDrugs(searchQuery : Text) : async [Drug] {
-    // Public access - no authentication required for searching drug database
+  public query func searchDrugs(searchQuery : Text) : async [Drug] {
     let filtered = drugTableStore.toArray().filter(func(entry) {
       entry.1.name.contains(#text searchQuery);
     });
     filtered.map(func((name, drug)) { drug });
   };
 
-  public query ({ caller }) func getCategorizedDrugs() : async CategorizedDrugs {
-    // Public access - no authentication required for browsing categorized drugs
+  public query func getCategorizedDrugs() : async CategorizedDrugs {
     let antibiotics = List.empty<DrugWithCategory>();
     let painkillers = List.empty<DrugWithCategory>();
     let fdcs = List.empty<DrugWithCategory>();
@@ -898,140 +904,16 @@ actor {
     };
   };
 
-  public query ({ caller }) func getApprovedDrugs() : async [Drug] {
-    // Public access - no authentication required for browsing approved drugs
-    let approvedDrugs : [Drug] = [
-      // Antibiotics
-      {
-        name = "Amoxicillin";
-        status = #approved;
-        date = 1401571200;
-        category = "antibiotic";
-        description = "Used to treat a variety of bacterial infections including respiratory and urinary tract infections. Source: Central Drugs Standard Control Organization (CDSCO), India";
-        source = #cdsco;
-        safetyInfo = "Approved for general use. Use with caution in patients with penicillin allergies.";
-      },
-      {
-        name = "Cefuroxime";
-        status = #approved;
-        date = 1401571200;
-        category = "antibiotic";
-        description = "Second-generation cephalosporin antibiotic used for bacterial infections. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Generally well-tolerated. Monitor for allergic reactions.";
-      },
-      {
-        name = "Azithromycin";
-        status = #approved;
-        date = 1401571200;
-        category = "antibiotic";
-        description = "Macrolide antibiotic used to treat respiratory and skin infections. Source: MIMS India";
-        source = #mimsIndia;
-        safetyInfo = "Widely used. Potential for QT prolongation in susceptible patients.";
-      },
-      {
-        name = "Doxycycline";
-        status = #approved;
-        date = 1401571200;
-        category = "antibiotic";
-        description = "Tetracycline antibiotic effective against a wide range of bacterial infections. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Avoid in children under 8 years and pregnant women due to tooth discoloration risk.";
-      },
-      // Painkillers
-      {
-        name = "Paracetamol";
-        status = #approved;
-        date = 1393376000;
-        category = "painkiller";
-        description = "Commonly used analgesic and antipyretic for pain and fever. Source: MIMS India";
-        source = #mimsIndia;
-        safetyInfo = "Safe for general use. Caution in liver disease patients.";
-      },
-      {
-        name = "Ibuprofen";
-        status = #approved;
-        date = 1393376000;
-        category = "painkiller";
-        description = "Nonsteroidal anti-inflammatory drug (NSAID) for pain, inflammation, and fever. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Use with caution in patients with hypertension or gastrointestinal disorders.";
-      },
-      // FDCs (Fixed Dose Combinations)
-      {
-        name = "Amoxicillin-Clavulanate";
-        status = #approved;
-        date = 1401571200;
-        category = "fdc";
-        description = "Combination antibiotic for enhanced bacterial coverage. Source: MIMS India";
-        source = #mimsIndia;
-        safetyInfo = "Approved for certain infections. Beware of gastrointestinal side effects.";
-      },
-      // Vitamins
-      {
-        name = "Vitamin D3 (Cholecalciferol)";
-        status = #approved;
-        date = 1388534400;
-        category = "vitamin";
-        description = "Essential vitamin for bone health and calcium metabolism. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Generally safe. Monitor for toxicity with excessive supplementation.";
-      }
-    ];
-    approvedDrugs;
+  func filterDrugsByStatus(status : DrugStatus) : [Drug] {
+    let filtered = drugTableStore.toArray().filter(func(entry) { entry.1.status == status });
+    filtered.map(func((name, drug)) { drug });
   };
 
-  public query ({ caller }) func getBannedDrugs() : async [Drug] {
-    // Public access - no authentication required for browsing banned drugs
-    let bannedDrugs : [Drug] = [
-      // CDSCO Banned Drugs
-      {
-        name = "Sibutramine";
-        status = #banned;
-        date = 1338249600;
-        category = "other";
-        description = "Weight loss medication banned in India due to cardiovascular risks and adverse events. Source: CDSCO, Government of India";
-        source = #cdsco;
-        safetyInfo = "Should not be manufactured or sold in India. Associated with increased risk of heart attack and stroke.";
-      },
-      {
-        name = "Dextropropoxyphene";
-        status = #banned;
-        date = 1346476800;
-        category = "painkiller";
-        description = "Pain reliever banned in India due to safety concerns and risk of cardiac toxicity. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Should not be manufactured or sold in India. Can cause serious heart arrhythmias.";
-      },
-      {
-        name = "Nimesulide (Paediatric Use)";
-        status = #banned;
-        date = 1267142400;
-        category = "painkiller";
-        description = "Nimesulide is banned in India for pediatric use due to hepatotoxicity and safety concerns. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Strictly prohibited in children. Not recommended for pediatric use.";
-      },
-      {
-        name = "Phenylpropanolamine (PPA)";
-        status = #banned;
-        date = 1199145600;
-        category = "other";
-        description = "Decongestant banned due to association with hemorrhagic stroke risk. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Should not be manufactured or sold in India. Strictly prohibited.";
-      },
-      {
-        name = "Rofecoxib";
-        status = #banned;
-        date = 1104537600;
-        category = "painkiller";
-        description = "Nonsteroidal anti-inflammatory drug (NSAID) banned in India for increased cardiovascular risks. Source: CDSCO, India";
-        source = #cdsco;
-        safetyInfo = "Removed from market due to risk of cardiovascular events. Strictly prohibited.";
-      }
-    ];
-    bannedDrugs;
+  public query func getFilteredDrugs(status : ?DrugStatus) : async [Drug] {
+    switch (status) {
+      case (?drugStatus) { filterDrugsByStatus(drugStatus) };
+      case (null) { drugTableStore.values().toArray() };
+    };
   };
 
   public query ({ caller }) func getPrescriberDetailsByPatientId(patientId : Text) : async ?PrescriberDetails {
@@ -1056,5 +938,48 @@ actor {
         Runtime.trap(errorMessage);
       };
     };
+  };
+
+  public shared ({ caller }) func refreshAndVerifyDrugTable() : async DrugVerificationResult {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can refresh and verify drug table");
+    };
+
+    let allDrugs = drugTableStore.values().toArray();
+    let verifiedApprovedDrugs = getDrugsByStatus(#approved);
+    let verifiedBannedDrugs = getDrugsByStatus(#banned);
+
+    let verificationResult : DrugVerificationResult = {
+      allDrugs;
+      verifiedApprovedDrugs;
+      verifiedBannedDrugs;
+      verificationTimestamp = Time.now();
+    };
+
+    lastDrugVerification := ?verificationResult;
+    lastDrugTableRefresh := ?Time.now();
+
+    verificationResult;
+  };
+
+  public query func getLastDrugVerification() : async ?DrugVerificationResult {
+    lastDrugVerification;
+  };
+
+  public query func getAllDrugs() : async [Drug] {
+    drugTableStore.values().toArray();
+  };
+
+  public query func getApprovedDrugs() : async [Drug] {
+    getDrugsByStatus(#approved);
+  };
+
+  public query func getBannedDrugs() : async [Drug] {
+    getDrugsByStatus(#banned);
+  };
+
+  func getDrugsByStatus(status : DrugStatus) : [Drug] {
+    let filtered = drugTableStore.toArray().filter(func(entry) { entry.1.status == status });
+    filtered.map(func((name, drug)) { drug });
   };
 };

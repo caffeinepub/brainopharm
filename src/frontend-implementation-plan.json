@@ -1,79 +1,69 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Drug Interaction checker to compute fresh, validated local results on each manual check",
+  "title": "Update curated drug dataset and add post-refresh verification with full-list rendering",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Replace stubbed interaction-check hooks with real client-side React Query queries so each click computes and renders results for the current manual inputs (Drug-Drug, Drug-Food, Food-Food).",
+      "summary": "Update the curated drug dataset to be complete, up to date, type-safe, and deterministically deduplicated.",
       "acceptanceCriteria": [
-        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Drug tab, the results list updates to match the current input values (not previous inputs).",
-        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Drug-Food tab, the results list updates to match the current input values (not previous inputs).",
-        "Given the Drug Interaction module, when the user enters valid values and clicks \"Check interactions\" in the Food-Food tab, the results list updates to match the current input values (not previous inputs).",
-        "The interaction hooks provide working loading and error states (isLoading/isPending/error) so the UI can show a spinner/skeleton and an error message when needed.",
-        "The query keys include the normalized input set(s) so re-checking after editing inputs always triggers a fresh computation and re-render."
+        "`frontend/src/data/curatedDrugDataset.ts` contains the updated complete dataset (no build/type errors).",
+        "All entries in the dataset conform to the `Drug` type (including valid `DrugStatus` and `DrugSource` variants).",
+        "Duplicate drug names are deterministically deduplicated using the existing `deduplicateDrugs` utility rules (banned > approved; newer date > older date)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/data/curatedDrugDataset.ts",
           "operation": "modify",
-          "description": "Replace the stubbed hooks (useCheckMultiDrugInteraction/useCheckDrugFoodInteractions/useCheckFoodFoodInteractions) with real useQuery-based hooks that: (1) compute results client-side, (2) expose isLoading/isPending/error from React Query, and (3) use query keys that include a stable, normalized representation of the current inputs (sorted + normalization) so changing inputs and clicking \"Check interactions\" always triggers a fresh computation and re-render."
-        },
-        {
-          "path": "frontend/src/services/localInteractionCheckService.ts",
-          "operation": "create",
-          "description": "Add a client-side service that performs the three interaction computations (Drug-Drug multi-pair, Drug-Food combinations, Food-Food unique pairs) and returns result shapes matching the existing UI cards. Centralize normalization, sorting, and pair generation so the React Query hooks can call a single computation layer."
-        },
-        {
-          "path": "frontend/src/components/DrugInteractionsModule.tsx",
-          "operation": "modify",
-          "description": "Wire the updated hooks into the UI so the module renders loading skeleton/spinner and error messages using the returned isLoading/isPending/error states, and ensure the \"Check interactions\" buttons update the hook inputs from the latest manual entries (no stale state)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Implement and enforce manual-input validation for Drug-Drug, Drug-Food, and Food-Food checks and show clear English validation messages without running checks when invalid.",
-      "acceptanceCriteria": [
-        "Drug-Drug: If fewer than 2 medications are entered, show: \"Please enter at least two medications to check interactions.\" and do not run the check.",
-        "Drug-Drug: If duplicate drug names are entered (case/spacing/punctuation-insensitive), show: \"Please enter different medications. Duplicate drug names detected.\" and do not run the check.",
-        "Drug-Food: If no drug is entered or no food is entered, show a clear validation message (English) and do not run the check.",
-        "Drug-Food: If duplicate drugs or duplicate foods are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check.",
-        "Food-Food: If fewer than 2 foods are entered, show a clear validation message (English) and do not run the check.",
-        "Food-Food: If duplicate food names are entered (case/spacing/punctuation-insensitive), show a clear validation message (English) and do not run the check."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/DrugInteractionsModule.tsx",
-          "operation": "modify",
-          "description": "Add/complete validation logic for Drug-Food and Food-Food (and keep Drug-Drug behavior) using existing normalization-based duplicate detection. Prevent updating the \"toCheck\" state and prevent marking \"search performed\" when validation fails; display the specified English messages in the module for each tab."
-        },
-        {
-          "path": "frontend/src/services/localInteractionCheckService.ts",
-          "operation": "modify",
-          "description": "Add small shared helpers (input normalization/deduplication utilities used by hooks) to keep query keys and computations consistent with the UI’s validation rules (case/spacing/punctuation-insensitive comparisons)."
+          "description": "Update/expand `curatedDrugDataset` so every record includes required fields (`name`, `status`, `date`, `category` when known, `description`, `source`, `safetyInfo`) and aligns with `Drug`, `DrugStatus`, and `DrugSource` types. Ensure exported dataset is deterministically deduplicated using existing `deduplicateDrugs` rules (banned > approved; newer date > older date)."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Ensure Drug Interaction results are computed from local datasets/indexes (drug-drug, drug-food, food-food) and continue working without backend/actor availability.",
+      "summary": "Add a single-action refresh + verification workflow and show verification results in the Drug Database UI.",
       "acceptanceCriteria": [
-        "Drug-Drug results are produced from the local drug-drug interaction data source and are returned as an array of interaction cards (including \"No interaction data found...\" cards for missing pairs) that matches the pairings from the entered drugs.",
-        "Drug-Food results are produced from the local drug-food interaction dataset/index for each selected drug-food combination, returning a consistent result shape used by the existing UI cards.",
-        "Food-Food results are produced from the local food-food interaction dataset/index for each unique food pair entered, returning a consistent result shape used by the existing UI cards.",
-        "Performing checks does not require any Motoko/backend changes and works even if the actor is unavailable."
+        "A single user action (or existing refresh action) triggers: (1) update/refresh of the drug dataset and (2) a verification step.",
+        "Verification checks at minimum: total count > 0, no empty `name` values, no invalid/missing `status`, and no duplicate drugs when normalized by the same rules used in the curated dataset.",
+        "The UI shows a clear success/failure outcome for verification, and on failure provides a human-readable summary (English) of what failed (e.g., duplicate count, invalid entries count)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/services/localInteractionCheckService.ts",
-          "operation": "modify",
-          "description": "Implement computations strictly using existing local sources: (1) drug-drug lookups via the existing local drug-drug dataset/index utilities, (2) drug-food lookups via the cached drug-food index utilities, and (3) food-food lookups via the cached food-food index utilities. Ensure results include explicit “no data” objects where needed so the existing cards render the built-in “No interaction data found...” states."
+          "path": "frontend/src/services/drugListVerification.ts",
+          "operation": "create",
+          "description": "Create a client-side drug-list verification helper that can validate a `Drug[]` using the same normalization/deduplication rules as `frontend/src/data/curatedDrugDataset.ts` (e.g., use `normalizeDrugName` / `deduplicateDrugs`). It must report a boolean pass/fail plus an English summary including at least: total count, empty-name count, invalid/missing-status count, and duplicate-normalized-name count."
         },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the new interaction-check React Query hooks do not depend on useActor/actor availability and never call backend canister methods for these checks; all queryFns should use only the local interaction check service, so checks work even when the actor is unavailable."
+          "description": "Add React Query hooks to support the post-refresh verification workflow: a mutation that calls the backend capability `refreshAndVerifyDrugTable()` and a query for `getLastDrugVerification()`. Ensure the mutation invalidates/refetches the drug list query (e.g., `['allDrugs']`) and the last verification query so the UI updates immediately after a refresh+verify completes."
+        },
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Wire the existing Refresh user action to trigger refresh+verification (single action) by using the new mutation hook. After completion, run the client-side verification helper over the returned `allDrugs` (or the currently fetched list) and render a clear success/failure outcome in the UI. On failure, display a concise English summary of what failed (duplicate count, invalid entries count, etc.). Keep UI text in English and do not edit any files under `frontend/src/components/ui`."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Ensure Drug Database renders the entire dataset per tab and uses pagination/virtualization so search, filters, CSV export, and details modal work across the full list.",
+      "acceptanceCriteria": [
+        "The Drug Database module renders all items returned by the backend for each tab (All/Approved/Banned), without silently dropping items due to performance limits.",
+        "Search and category filtering operate over the full fetched dataset.",
+        "CSV export includes all currently filtered rows (not just the visible subset, if pagination/virtualization is used).",
+        "Drug details modal continues to open and display details for any item in the dataset."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Implement a large-list UI strategy using client-side pagination (or virtualization) applied after full-list filtering: (1) compute `filteredDrugs` over the full fetched dataset, (2) derive `visibleDrugs` for rendering only (page slice), and (3) keep CSV export based on the full `filteredDrugs` (not the visible slice). Ensure the modal still opens for any rendered row and continues to show correct details."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Ensure Drug Database list-fetching hooks remain independent of profile-loading state and are configured to fetch the complete drug list (e.g., keep `useGetAllDrugs` enabled based on actor availability, with appropriate caching/stale times). If needed for UI correctness, add/select a dedicated query key for the all-drugs dataset used by the Drug Database module."
         }
       ]
     }

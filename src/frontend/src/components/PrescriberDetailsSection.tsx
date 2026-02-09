@@ -1,25 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Textarea } from './ui/textarea';
-import { Loader2, Save, X, UserCog } from 'lucide-react';
+import { Alert, AlertDescription } from './ui/alert';
+import { Skeleton } from './ui/skeleton';
+import { CheckCircle2, AlertCircle, User } from 'lucide-react';
 import { useGetPrescriberDetails, useSavePrescriberDetails } from '../hooks/useQueries';
-import { PrescriberPrefix, PrescriberDetails } from '../backend';
-import { toast } from 'sonner';
-import { validateRequired, validateEmail, validateContactNumber, getFirstInvalidField } from '../utils/formValidation';
+import { PrescriberDetails, PrescriberPrefix } from '../backend';
+import { getFirstInvalidField } from '../utils/formValidation';
 
 interface PrescriberDetailsSectionProps {
   patientId: string;
 }
 
 export default function PrescriberDetailsSection({ patientId }: PrescriberDetailsSectionProps) {
-  const { data: existingDetails, isLoading: loadingDetails } = useGetPrescriberDetails(patientId);
+  const { data: existingDetails, isLoading } = useGetPrescriberDetails(patientId);
   const saveDetails = useSavePrescriberDetails();
 
-  const [isEditing, setIsEditing] = useState(false);
   const [prefix, setPrefix] = useState<PrescriberPrefix>(PrescriberPrefix.doctor);
   const [fullName, setFullName] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
@@ -27,18 +26,10 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
   const [contactNumber, setContactNumber] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState('');
 
-  // Refs for focus management
-  const fullNameRef = useRef<HTMLInputElement | null>(null);
-  const registrationNumberRef = useRef<HTMLInputElement | null>(null);
-  const specializationRef = useRef<HTMLInputElement | null>(null);
-  const contactNumberRef = useRef<HTMLInputElement | null>(null);
-  const emailRef = useRef<HTMLInputElement | null>(null);
-  const addressRef = useRef<HTMLTextAreaElement | null>(null);
-
-  // Load existing details when available
+  // Load existing details
   useEffect(() => {
     if (existingDetails) {
       setPrefix(existingDetails.prefix);
@@ -54,116 +45,76 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    const fullNameValidation = validateRequired(fullName, 'Full name');
-    if (!fullNameValidation.isValid) {
-      newErrors.fullName = fullNameValidation.error!;
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
     }
 
-    const registrationNumberValidation = validateRequired(registrationNumber, 'Registration number');
-    if (!registrationNumberValidation.isValid) {
-      newErrors.registrationNumber = registrationNumberValidation.error!;
+    if (!registrationNumber.trim()) {
+      newErrors.registrationNumber = 'Registration number is required';
     }
 
-    const specializationValidation = validateRequired(specialization, 'Specialization');
-    if (!specializationValidation.isValid) {
-      newErrors.specialization = specializationValidation.error!;
+    if (!specialization.trim()) {
+      newErrors.specialization = 'Specialization is required';
     }
 
-    const contactNumberValidation = validateContactNumber(contactNumber);
-    if (!contactNumberValidation.isValid) {
-      newErrors.contactNumber = contactNumberValidation.error!;
+    if (!contactNumber.trim()) {
+      newErrors.contactNumber = 'Contact number is required';
+    } else if (!/^\d{10}$/.test(contactNumber.replace(/\s/g, ''))) {
+      newErrors.contactNumber = 'Contact number must be 10 digits';
     }
 
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error!;
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Invalid email format';
     }
 
-    const addressValidation = validateRequired(address, 'Address');
-    if (!addressValidation.isValid) {
-      newErrors.address = addressValidation.error!;
+    if (!address.trim()) {
+      newErrors.address = 'Address is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const focusFirstInvalidField = () => {
-    const firstInvalid = getFirstInvalidField(errors);
-    if (!firstInvalid) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuccessMessage('');
 
-    const refMap: Record<string, React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>> = {
-      fullName: fullNameRef,
-      registrationNumber: registrationNumberRef,
-      specialization: specializationRef,
-      contactNumber: contactNumberRef,
-      email: emailRef,
-      address: addressRef,
-    };
-
-    const ref = refMap[firstInvalid];
-    if (ref?.current) {
-      ref.current.focus();
-    }
-  };
-
-  const handleSave = async () => {
     if (!validateForm()) {
-      toast.error('Please fix the validation errors before saving');
-      // Focus the first invalid field after a short delay to allow error messages to render
-      setTimeout(focusFirstInvalidField, 100);
+      const firstInvalidField = getFirstInvalidField(errors);
+      if (firstInvalidField) {
+        document.getElementById(firstInvalidField)?.focus();
+      }
       return;
     }
 
-    const details: PrescriberDetails = {
-      prefix,
-      fullName: fullName.trim(),
-      registrationNumber: registrationNumber.trim(),
-      specialization: specialization.trim(),
-      contactNumber: contactNumber.trim(),
-      email: email.trim(),
-      address: address.trim(),
-    };
-
     try {
-      await saveDetails.mutateAsync({ patientId, details });
-      toast.success('Prescriber details saved successfully');
-      setIsEditing(false);
-      setErrors({});
-    } catch (error: any) {
+      const prescriberDetails: PrescriberDetails = {
+        prefix,
+        fullName: fullName.trim(),
+        registrationNumber: registrationNumber.trim(),
+        specialization: specialization.trim(),
+        contactNumber: contactNumber.trim(),
+        email: email.trim(),
+        address: address.trim(),
+      };
+
+      await saveDetails.mutateAsync({ patientId, prescriberDetails });
+      setSuccessMessage('Prescriber details saved successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
       console.error('Error saving prescriber details:', error);
-      toast.error(error.message || 'Failed to save prescriber details');
+      setErrors({ submit: 'Failed to save prescriber details. Please try again.' });
     }
   };
 
-  const handleCancel = () => {
-    if (existingDetails) {
-      setPrefix(existingDetails.prefix);
-      setFullName(existingDetails.fullName);
-      setRegistrationNumber(existingDetails.registrationNumber);
-      setSpecialization(existingDetails.specialization);
-      setContactNumber(existingDetails.contactNumber);
-      setEmail(existingDetails.email);
-      setAddress(existingDetails.address);
-    } else {
-      setPrefix(PrescriberPrefix.doctor);
-      setFullName('');
-      setRegistrationNumber('');
-      setSpecialization('');
-      setContactNumber('');
-      setEmail('');
-      setAddress('');
-    }
-    setErrors({});
-    setIsEditing(false);
-  };
-
-  const getPrefixLabel = (p: PrescriberPrefix): string => {
-    switch (p) {
+  const getPrefixLabel = (prefix: PrescriberPrefix): string => {
+    switch (prefix) {
       case PrescriberPrefix.doctor:
         return 'Dr.';
       case PrescriberPrefix.practitionerNurse:
-        return 'Practitioner Nurse';
+        return 'Nurse';
       case PrescriberPrefix.pharmacist:
         return 'Pharmacist';
       default:
@@ -171,230 +122,224 @@ export default function PrescriberDetailsSection({ patientId }: PrescriberDetail
     }
   };
 
-  if (loadingDetails) {
+  if (isLoading) {
     return (
-      <Card className="border-stone-200 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-900/50">
-        <CardContent className="py-8">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-emerald-600 dark:text-emerald-500" />
-            <span className="ml-2 text-sm text-stone-600 dark:text-stone-400">Loading prescriber details...</span>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Prescriber Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="border-stone-200 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-900/50">
+    <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <UserCog className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
-            <div>
-              <CardTitle className="text-stone-900 dark:text-stone-100">Prescriber Details</CardTitle>
-              <CardDescription className="text-stone-600 dark:text-stone-400">Information about the prescribing healthcare professional</CardDescription>
-            </div>
-          </div>
-          {!isEditing && (
-            <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950">
-              {existingDetails ? 'Edit' : 'Add Details'}
-            </Button>
-          )}
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          Prescriber Details
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        {!isEditing && !existingDetails ? (
-          <p className="text-sm text-stone-600 dark:text-stone-400">No prescriber details recorded for this patient.</p>
-        ) : !isEditing && existingDetails ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Prefix</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{getPrefixLabel(existingDetails.prefix)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Full Name</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{existingDetails.fullName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Registration Number</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{existingDetails.registrationNumber}</p>
-            </div>
-            <div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Specialization</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{existingDetails.specialization}</p>
-            </div>
-            <div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Contact Number</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{existingDetails.contactNumber}</p>
-            </div>
-            <div>
-              <p className="text-sm text-stone-600 dark:text-stone-400">Mail ID</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{existingDetails.email}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="text-sm text-stone-600 dark:text-stone-400">Address</p>
-              <p className="font-medium text-stone-900 dark:text-stone-100">{existingDetails.address}</p>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Prefix */}
+          <div className="space-y-2">
+            <Label htmlFor="prefix">Prefix *</Label>
+            <Select
+              value={prefix}
+              onValueChange={(value) => setPrefix(value as PrescriberPrefix)}
+            >
+              <SelectTrigger id="prefix" aria-required="true">
+                <SelectValue placeholder="Select prefix" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PrescriberPrefix.doctor}>Dr. (Doctor)</SelectItem>
+                <SelectItem value={PrescriberPrefix.practitionerNurse}>Nurse (Practitioner Nurse)</SelectItem>
+                <SelectItem value={PrescriberPrefix.pharmacist}>Pharmacist</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="prefix" className="text-stone-700 dark:text-stone-300">
-                  Prefix <span className="text-red-600 dark:text-red-500">*</span>
-                </Label>
-                <Select value={prefix} onValueChange={(value) => setPrefix(value as PrescriberPrefix)}>
-                  <SelectTrigger 
-                    id="prefix" 
-                    className="border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950"
-                    aria-required="true"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={PrescriberPrefix.doctor}>Dr.</SelectItem>
-                    <SelectItem value={PrescriberPrefix.practitionerNurse}>Practitioner Nurse</SelectItem>
-                    <SelectItem value={PrescriberPrefix.pharmacist}>Pharmacist</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-stone-700 dark:text-stone-300">
-                  Full Name <span className="text-red-600 dark:text-red-500">*</span>
-                </Label>
-                <Input
-                  ref={fullNameRef}
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter full name"
-                  className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.fullName ? 'border-red-500' : ''}`}
-                  aria-required="true"
-                  aria-invalid={!!errors.fullName}
-                  aria-describedby={errors.fullName ? 'fullName-error' : undefined}
-                />
-                {errors.fullName && <p id="fullName-error" className="text-xs text-red-600 dark:text-red-500">{errors.fullName}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="registrationNumber" className="text-stone-700 dark:text-stone-300">
-                  Registration Number <span className="text-red-600 dark:text-red-500">*</span>
-                </Label>
-                <Input
-                  ref={registrationNumberRef}
-                  id="registrationNumber"
-                  value={registrationNumber}
-                  onChange={(e) => setRegistrationNumber(e.target.value)}
-                  placeholder="Enter registration number"
-                  className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.registrationNumber ? 'border-red-500' : ''}`}
-                  aria-required="true"
-                  aria-invalid={!!errors.registrationNumber}
-                  aria-describedby={errors.registrationNumber ? 'registrationNumber-error' : undefined}
-                />
-                {errors.registrationNumber && <p id="registrationNumber-error" className="text-xs text-red-600 dark:text-red-500">{errors.registrationNumber}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="specialization" className="text-stone-700 dark:text-stone-300">
-                  Specialization <span className="text-red-600 dark:text-red-500">*</span>
-                </Label>
-                <Input
-                  ref={specializationRef}
-                  id="specialization"
-                  value={specialization}
-                  onChange={(e) => setSpecialization(e.target.value)}
-                  placeholder="e.g., Cardiology, General Medicine"
-                  className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.specialization ? 'border-red-500' : ''}`}
-                  aria-required="true"
-                  aria-invalid={!!errors.specialization}
-                  aria-describedby={errors.specialization ? 'specialization-error' : undefined}
-                />
-                {errors.specialization && <p id="specialization-error" className="text-xs text-red-600 dark:text-red-500">{errors.specialization}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactNumber" className="text-stone-700 dark:text-stone-300">
-                  Contact Number <span className="text-red-600 dark:text-red-500">*</span>
-                </Label>
-                <Input
-                  ref={contactNumberRef}
-                  id="contactNumber"
-                  value={contactNumber}
-                  onChange={(e) => setContactNumber(e.target.value)}
-                  placeholder="+91 1234567890"
-                  className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.contactNumber ? 'border-red-500' : ''}`}
-                  aria-required="true"
-                  aria-invalid={!!errors.contactNumber}
-                  aria-describedby={errors.contactNumber ? 'contactNumber-error' : undefined}
-                />
-                {errors.contactNumber && <p id="contactNumber-error" className="text-xs text-red-600 dark:text-red-500">{errors.contactNumber}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-stone-700 dark:text-stone-300">
-                  Mail ID <span className="text-red-600 dark:text-red-500">*</span>
-                </Label>
-                <Input
-                  ref={emailRef}
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.email ? 'border-red-500' : ''}`}
-                  aria-required="true"
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                />
-                {errors.email && <p id="email-error" className="text-xs text-red-600 dark:text-red-500">{errors.email}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address" className="text-stone-700 dark:text-stone-300">
-                Address <span className="text-red-600 dark:text-red-500">*</span>
-              </Label>
-              <Textarea
-                ref={addressRef}
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter complete address"
-                rows={3}
-                className={`border-stone-300 bg-white dark:border-stone-700 dark:bg-stone-950 ${errors.address ? 'border-red-500' : ''}`}
-                aria-required="true"
-                aria-invalid={!!errors.address}
-                aria-describedby={errors.address ? 'address-error' : undefined}
-              />
-              {errors.address && <p id="address-error" className="text-xs text-red-600 dark:text-red-500">{errors.address}</p>}
-            </div>
-
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleSave} 
-                disabled={saveDetails.isPending} 
-                className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800"
-              >
-                {saveDetails.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Details
-                  </>
-                )}
-              </Button>
-              <Button onClick={handleCancel} variant="outline" disabled={saveDetails.isPending} className="border-stone-300 text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-900">
-                <X className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
-            </div>
+          {/* Full Name */}
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name *</Label>
+            <Input
+              id="fullName"
+              value={fullName}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                if (errors.fullName) {
+                  setErrors((prev) => ({ ...prev, fullName: '' }));
+                }
+              }}
+              placeholder="Enter full name"
+              aria-required="true"
+              aria-invalid={!!errors.fullName}
+              aria-describedby={errors.fullName ? 'fullName-error' : undefined}
+            />
+            {errors.fullName && (
+              <p id="fullName-error" className="text-sm text-destructive">
+                {errors.fullName}
+              </p>
+            )}
           </div>
-        )}
+
+          {/* Registration Number */}
+          <div className="space-y-2">
+            <Label htmlFor="registrationNumber">Registration Number *</Label>
+            <Input
+              id="registrationNumber"
+              value={registrationNumber}
+              onChange={(e) => {
+                setRegistrationNumber(e.target.value);
+                if (errors.registrationNumber) {
+                  setErrors((prev) => ({ ...prev, registrationNumber: '' }));
+                }
+              }}
+              placeholder="Enter registration number"
+              aria-required="true"
+              aria-invalid={!!errors.registrationNumber}
+              aria-describedby={errors.registrationNumber ? 'registrationNumber-error' : undefined}
+            />
+            {errors.registrationNumber && (
+              <p id="registrationNumber-error" className="text-sm text-destructive">
+                {errors.registrationNumber}
+              </p>
+            )}
+          </div>
+
+          {/* Specialization */}
+          <div className="space-y-2">
+            <Label htmlFor="specialization">Specialization *</Label>
+            <Input
+              id="specialization"
+              value={specialization}
+              onChange={(e) => {
+                setSpecialization(e.target.value);
+                if (errors.specialization) {
+                  setErrors((prev) => ({ ...prev, specialization: '' }));
+                }
+              }}
+              placeholder="Enter specialization"
+              aria-required="true"
+              aria-invalid={!!errors.specialization}
+              aria-describedby={errors.specialization ? 'specialization-error' : undefined}
+            />
+            {errors.specialization && (
+              <p id="specialization-error" className="text-sm text-destructive">
+                {errors.specialization}
+              </p>
+            )}
+          </div>
+
+          {/* Contact Number */}
+          <div className="space-y-2">
+            <Label htmlFor="contactNumber">Contact Number *</Label>
+            <Input
+              id="contactNumber"
+              value={contactNumber}
+              onChange={(e) => {
+                setContactNumber(e.target.value);
+                if (errors.contactNumber) {
+                  setErrors((prev) => ({ ...prev, contactNumber: '' }));
+                }
+              }}
+              placeholder="Enter 10-digit contact number"
+              aria-required="true"
+              aria-invalid={!!errors.contactNumber}
+              aria-describedby={errors.contactNumber ? 'contactNumber-error' : undefined}
+            />
+            {errors.contactNumber && (
+              <p id="contactNumber-error" className="text-sm text-destructive">
+                {errors.contactNumber}
+              </p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div className="space-y-2">
+            <Label htmlFor="email">Mail ID *</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) {
+                  setErrors((prev) => ({ ...prev, email: '' }));
+                }
+              }}
+              placeholder="Enter email address"
+              aria-required="true"
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'email-error' : undefined}
+            />
+            {errors.email && (
+              <p id="email-error" className="text-sm text-destructive">
+                {errors.email}
+              </p>
+            )}
+          </div>
+
+          {/* Address */}
+          <div className="space-y-2">
+            <Label htmlFor="address">Address *</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                if (errors.address) {
+                  setErrors((prev) => ({ ...prev, address: '' }));
+                }
+              }}
+              placeholder="Enter complete address"
+              aria-required="true"
+              aria-invalid={!!errors.address}
+              aria-describedby={errors.address ? 'address-error' : undefined}
+            />
+            {errors.address && (
+              <p id="address-error" className="text-sm text-destructive">
+                {errors.address}
+              </p>
+            )}
+          </div>
+
+          {/* Submit Error */}
+          {errors.submit && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errors.submit}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Success Message */}
+          {successMessage && (
+            <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700 dark:text-green-300">
+                {successMessage}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={saveDetails.isPending}
+          >
+            {saveDetails.isPending ? 'Saving...' : 'Save Prescriber Details'}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );

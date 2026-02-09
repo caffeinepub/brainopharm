@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useGetAllDrugs, useGetMultiSourceLastUpdated, useGetMultiSourceSyncStatus, useRefreshMultiSourceData } from '../hooks/useQueries';
+import { useGetAllDrugs, useGetMultiSourceLastUpdated, useGetMultiSourceSyncStatus, useRefreshMultiSourceData, useRefreshAndVerifyDrugTable, useGetLastDrugVerification } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
@@ -10,11 +10,14 @@ import { Skeleton } from './ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
-import { Search, CheckCircle2, XCircle, Database, RefreshCw, Clock, Moon, Sun, TrendingDown, Filter, Info, ExternalLink, Download, Loader2, AlertCircle, X } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, Database, RefreshCw, Clock, Moon, Sun, TrendingDown, Filter, Info, ExternalLink, Download, Loader2, AlertCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DrugStatus, type Drug } from '../backend';
 import { useTheme } from 'next-themes';
 import DrugDetailsModal from './DrugDetailsModal';
 import MonthlyBanTrendsChart from './MonthlyBanTrendsChart';
+import { verifyDrugList } from '../services/drugListVerification';
+
+const ITEMS_PER_PAGE = 50;
 
 export default function DrugTableModule() {
   const [activeTab, setActiveTab] = useState<'all' | 'approved' | 'banned'>('all');
@@ -23,12 +26,16 @@ export default function DrugTableModule() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [showTrendsChart, setShowTrendsChart] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [verificationResult, setVerificationResult] = useState<{ passed: boolean; summary: string } | null>(null);
   const { theme, setTheme } = useTheme();
 
   const { data: allDrugs = [], isLoading: isLoadingAll } = useGetAllDrugs();
   const { data: lastUpdated } = useGetMultiSourceLastUpdated();
   const { data: syncStatus } = useGetMultiSourceSyncStatus();
   const refreshMultiSource = useRefreshMultiSourceData();
+  const refreshAndVerify = useRefreshAndVerifyDrugTable();
+  const { data: lastVerification } = useGetLastDrugVerification();
 
   // Debounce search input
   useEffect(() => {
@@ -38,6 +45,11 @@ export default function DrugTableModule() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, debouncedSearch, categoryFilter]);
+
   // Calculate drug counters
   const drugCounters = useMemo(() => {
     const banned = allDrugs.filter(d => d.status === DrugStatus.banned).length;
@@ -45,7 +57,7 @@ export default function DrugTableModule() {
     return { banned, approved, total: allDrugs.length };
   }, [allDrugs]);
 
-  // Filter drugs based on active tab, search term, and category
+  // Filter drugs based on active tab, search term, and category (FULL LIST)
   const filteredDrugs = useMemo(() => {
     let drugs: Drug[] = allDrugs;
     
@@ -74,6 +86,15 @@ export default function DrugTableModule() {
 
     return drugs;
   }, [activeTab, allDrugs, debouncedSearch, categoryFilter]);
+
+  // Paginate the filtered drugs for display
+  const paginatedDrugs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredDrugs.slice(startIndex, endIndex);
+  }, [filteredDrugs, currentPage]);
+
+  const totalPages = Math.ceil(filteredDrugs.length / ITEMS_PER_PAGE);
 
   // Check if drug is newly added (within last 7 days)
   const isNewDrug = (drugDate: bigint): boolean => {
@@ -215,8 +236,23 @@ export default function DrugTableModule() {
     );
   };
 
-  const handleRefresh = () => {
-    refreshMultiSource.mutate();
+  const handleRefreshAndVerify = async () => {
+    try {
+      const result = await refreshAndVerify.mutateAsync();
+      
+      // Run client-side verification on the returned data
+      const clientVerification = verifyDrugList(result.allDrugs);
+      setVerificationResult({
+        passed: clientVerification.passed,
+        summary: clientVerification.summary,
+      });
+    } catch (error) {
+      console.error('Refresh and verify failed:', error);
+      setVerificationResult({
+        passed: false,
+        summary: '✗ Verification failed: Unable to refresh drug table. Please try again.',
+      });
+    }
   };
 
   const handleDrugClick = (drug: Drug) => {
@@ -224,6 +260,7 @@ export default function DrugTableModule() {
   };
 
   const handleExportCSV = () => {
+    // Export ALL filtered drugs, not just the visible page
     const headers = ['Drug Name', 'Status', 'Date', 'Category', 'Reference Source', 'Description', 'Safety Info'];
     const rows = filteredDrugs.map(drug => {
       let sourceName = 'Unknown';
@@ -303,12 +340,12 @@ export default function DrugTableModule() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleRefresh}
-                disabled={refreshMultiSource.isPending}
+                onClick={handleRefreshAndVerify}
+                disabled={refreshAndVerify.isPending}
                 className="flex items-center gap-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900"
               >
-                <RefreshCw className={`h-4 w-4 ${refreshMultiSource.isPending ? 'animate-spin' : ''}`} />
-                Refresh
+                <RefreshCw className={`h-4 w-4 ${refreshAndVerify.isPending ? 'animate-spin' : ''}`} />
+                Refresh & Verify
               </Button>
               <div className="flex items-center gap-2">
                 <Label htmlFor="theme-toggle" className="sr-only">Toggle theme</Label>
@@ -332,6 +369,43 @@ export default function DrugTableModule() {
               </span>
             )}
           </div>
+
+          {/* Verification Result Banner */}
+          {verificationResult && (
+            <div className={`mt-4 p-3 rounded-lg border ${verificationResult.passed ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  {verificationResult.passed ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                  )}
+                  <p className={`text-sm ${verificationResult.passed ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
+                    {verificationResult.summary}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setVerificationResult(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Last Verification Info */}
+          {lastVerification && !verificationResult && (
+            <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                <Info className="h-4 w-4" />
+                <span>
+                  Last verification: {formatLastUpdated(new Date(Number(lastVerification.verificationTimestamp) / 1000000))} 
+                  {' '}({lastVerification.allDrugs.length} drugs verified)
+                </span>
+              </div>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="pt-6">
@@ -432,63 +506,130 @@ export default function DrugTableModule() {
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
-              ) : filteredDrugs.length === 0 ? (
-                <div className="py-12 text-center">
-                  <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-4 text-lg font-medium">No drugs found</p>
-                  <p className="text-sm text-muted-foreground">Try adjusting your search or filters</p>
-                </div>
               ) : (
-                <div className="rounded-lg border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Drug Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Source</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredDrugs.map((drug, idx) => (
-                        <TableRow
-                          key={idx}
-                          className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                          onClick={() => handleDrugClick(drug)}
+                <>
+                  <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
+                    <span>
+                      Showing {paginatedDrugs.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to{' '}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredDrugs.length)} of {filteredDrugs.length} drugs
+                    </span>
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
                         >
-                          <TableCell className="font-medium">{drug.name || 'Not available'}</TableCell>
-                          <TableCell>{getStatusBadge(drug.status, isNewDrug(drug.date))}</TableCell>
-                          <TableCell>{formatDate(drug.date)}</TableCell>
-                          <TableCell>{getCategoryBadge(drug.category)}</TableCell>
-                          <TableCell>{getSourceBadge(drug.source)}</TableCell>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[30%]">Drug Name</TableHead>
+                          <TableHead className="w-[15%]">Status</TableHead>
+                          <TableHead className="w-[15%]">Category</TableHead>
+                          <TableHead className="w-[15%]">Source</TableHead>
+                          <TableHead className="w-[15%]">Date</TableHead>
+                          <TableHead className="w-[10%]">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedDrugs.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              No drugs found matching your criteria
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedDrugs.map((drug, idx) => (
+                            <TableRow key={idx} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleDrugClick(drug)}>
+                              <TableCell className="font-medium">{drug.name || 'Not available'}</TableCell>
+                              <TableCell>{getStatusBadge(drug.status, isNewDrug(drug.date))}</TableCell>
+                              <TableCell>{getCategoryBadge(drug.category)}</TableCell>
+                              <TableCell>{getSourceBadge(drug.source)}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{formatDate(drug.date)}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDrugClick(drug);
+                                  }}
+                                >
+                                  <Info className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      <DrugDetailsModal drug={selectedDrug} isOpen={!!selectedDrug} onClose={() => setSelectedDrug(null)} />
+      {selectedDrug && (
+        <DrugDetailsModal
+          drug={selectedDrug}
+          isOpen={!!selectedDrug}
+          onClose={() => setSelectedDrug(null)}
+        />
+      )}
 
       {showTrendsChart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-w-6xl w-full max-h-[90vh] overflow-auto bg-white dark:bg-slate-900 rounded-lg">
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b p-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Monthly Ban Trends</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowTrendsChart(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-6">
-              <MonthlyBanTrendsChart drugs={allDrugs} isOpen={showTrendsChart} onClose={() => setShowTrendsChart(false)} />
-            </div>
-          </div>
-        </div>
+        <MonthlyBanTrendsChart
+          drugs={allDrugs}
+          isOpen={showTrendsChart}
+          onClose={() => setShowTrendsChart(false)}
+        />
       )}
     </>
   );

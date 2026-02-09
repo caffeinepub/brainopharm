@@ -55,21 +55,28 @@ LoadingScreen.displayName = 'LoadingScreen';
 
 function AppContent() {
   const { identity, isInitializing, loginStatus, clear } = useInternetIdentity();
-  const { data: userProfile, isLoading: profileLoading, isFetched, error: profileError, refetch: refetchProfile } = useGetCallerUserProfile();
+  const { 
+    data: userProfile, 
+    isFetched, 
+    error: profileError, 
+    refetch: refetchProfile,
+    actorReady,
+    profileFetching,
+  } = useGetCallerUserProfile();
   const [currentModule, setCurrentModule] = useState('patients');
   const [profileLoadDelayed, setProfileLoadDelayed] = useState(false);
 
   const isAuthenticated = !!identity && loginStatus === 'success';
 
-  // Start 5-second delay timer when authenticated and profile is loading
+  // Start 5-second delay timer ONLY when actor is ready AND profile is actively fetching
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !actorReady) {
       setProfileLoadDelayed(false);
       return;
     }
 
-    // If profile is still loading after authentication, start timer
-    if (profileLoading && !isFetched && !profileError) {
+    // Only start timer when profile query is actively fetching (not during actor init)
+    if (profileFetching && !isFetched && !profileError) {
       const delayTimer = setTimeout(() => {
         console.warn('Profile loading exceeded 5 seconds, showing recovery banner');
         setProfileLoadDelayed(true);
@@ -82,7 +89,7 @@ function AppContent() {
     if (isFetched && !profileError) {
       setProfileLoadDelayed(false);
     }
-  }, [isAuthenticated, profileLoading, isFetched, profileError]);
+  }, [isAuthenticated, actorReady, profileFetching, isFetched, profileError]);
 
   // Reset state on logout
   useEffect(() => {
@@ -105,14 +112,15 @@ function AppContent() {
   // Profile Setup modal and recovery banner are shown conditionally within the Dashboard view
 
   // Show Profile Setup modal only when:
+  // - Actor is ready
   // - Profile query has completed (isFetched = true)
   // - Profile is null (user needs to set up profile)
   // - No error occurred
   // - Not in delayed state (to avoid modal flash during slow loading)
-  const showProfileSetup = isAuthenticated && isFetched && userProfile === null && !profileError && !profileLoadDelayed;
+  const showProfileSetup = isAuthenticated && actorReady && isFetched && userProfile === null && !profileError && !profileLoadDelayed;
 
   // Show recovery banner when:
-  // - Profile loading is delayed (>5 seconds)
+  // - Profile loading is delayed (>5 seconds after actor is ready)
   // - OR profile fetch resulted in an error
   const showRecoveryBanner = profileLoadDelayed || !!profileError;
 
@@ -134,7 +142,7 @@ function AppContent() {
           <StartupProfileRecoveryBanner 
             onRetry={handleRetry}
             onLogout={handleLogout}
-            isLoading={profileLoading}
+            isLoading={profileFetching}
           />
         )}
         {showProfileSetup ? (

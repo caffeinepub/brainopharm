@@ -1,7 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Button } from './ui/button';
 import { AlertCircle, RefreshCw, LogOut } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface StartupProfileRecoveryBannerProps {
   onRetry: () => Promise<void>;
@@ -14,12 +13,7 @@ export default function StartupProfileRecoveryBanner({
   onLogout, 
   isLoading 
 }: StartupProfileRecoveryBannerProps) {
-  const queryClient = useQueryClient();
-
   const handleRetry = async () => {
-    // Invalidate both actor and profile queries to force a fresh fetch
-    await queryClient.invalidateQueries({ queryKey: ['actor'] });
-    await queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
     await onRetry();
   };
 
@@ -36,8 +30,7 @@ export default function StartupProfileRecoveryBanner({
         </AlertTitle>
         <AlertDescription className="text-yellow-700 dark:text-yellow-300 mt-2">
           <p className="mb-3">
-            We're having trouble loading your profile. This might be due to network issues or server delays.
-            You can continue using the application, or try the actions below.
+            Your profile is taking longer than expected to load. The Drug Database and other features remain fully accessible. You can retry loading your profile or continue using the application.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button

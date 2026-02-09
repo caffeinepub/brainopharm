@@ -1,66 +1,75 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-09T12:10:24.132Z",
+  "generatedAt": "2026-02-09T16:13:09.094Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 4,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
-        "status": "implemented",
+        "summary": "Update the application’s curated drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/services/localInteractionCheckService.ts",
-          "frontend/src/components/DrugInteractionsModule.tsx"
+          "frontend/src/data/curatedDrugDataset.ts"
         ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/services/localInteractionCheckService.ts",
-          "frontend/src/components/DrugInteractionsModule.tsx"
-        ]
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/DrugInteractionsModule.tsx",
-          "frontend/src/services/localInteractionCheckService.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/DrugInteractionsModule.tsx",
-          "frontend/src/services/localInteractionCheckService.ts"
-        ]
+        "summary": "Ensure backend drug query methods return complete datasets (no truncation): `getAllDrugs` returns all approved + banned drugs, and filtered endpoints (approved/banned) return the full correctly filtered lists, independent of any user profile state.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
+        "summary": "Add a verification workflow that runs after a drug-list refresh/update to confirm that adds and updates were applied correctly, and expose the verification result to the UI.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/services/localInteractionCheckService.ts",
+          "frontend/src/services/drugListVerification.ts",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/DrugTableModule.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/services/drugListVerification.ts",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/DrugTableModule.tsx"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Update the Drug Database UI to reliably render the entire corresponding dataset in the All Drugs / Approved / Banned tabs, with client-side search/category filters applied to the full list (not a partially loaded subset). If the list is large, implement a UI strategy (pagination or virtualization) that still allows viewing the full list while preserving existing search, CSV export, and the drug details modal.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DrugTableModule.tsx",
           "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/services/localInteractionCheckService.ts",
+          "frontend/src/components/DrugTableModule.tsx",
           "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
+    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/DrugInteractionsModule.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/DrugTableModule.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/services/localInteractionCheckService.ts",
+    "frontend/src/services/drugListVerification.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

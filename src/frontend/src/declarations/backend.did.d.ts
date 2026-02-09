@@ -97,6 +97,12 @@ export type DrugSource = { 'other' : string } |
   { 'applicationData' : null };
 export type DrugStatus = { 'banned' : null } |
   { 'approved' : null };
+export interface DrugVerificationResult {
+  'verifiedBannedDrugs' : Array<Drug>,
+  'verificationTimestamp' : Time,
+  'allDrugs' : Array<Drug>,
+  'verifiedApprovedDrugs' : Array<Drug>,
+}
 export interface DrugWithCategory {
   'categoryType' : DrugCategoryType,
   'drug' : Drug,
@@ -332,6 +338,7 @@ export interface _SERVICE {
   >,
   'getADRsByPatient' : ActorMethod<[string], Array<AdverseDrugReaction>>,
   'getAllDrugs' : ActorMethod<[], Array<Drug>>,
+  'getAllDrugsFromStore' : ActorMethod<[], Array<Drug>>,
   'getAllPatients' : ActorMethod<[], Array<Patient>>,
   'getApprovedDrugs' : ActorMethod<[], Array<Drug>>,
   'getBannedDrugs' : ActorMethod<[], Array<Drug>>,
@@ -345,7 +352,9 @@ export interface _SERVICE {
     DrugSafetyAdvisory
   >,
   'getExternalResources' : ActorMethod<[], Array<ExternalResource>>,
+  'getFilteredDrugs' : ActorMethod<[[] | [DrugStatus]], Array<Drug>>,
   'getLabResultsByPatient' : ActorMethod<[string], Array<LabResults>>,
+  'getLastDrugVerification' : ActorMethod<[], [] | [DrugVerificationResult]>,
   'getMedicationsByPatient' : ActorMethod<[string], Array<Medication>>,
   'getPrescriberDetailsByPatientId' : ActorMethod<
     [string],
@@ -362,6 +371,7 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'initializeAccessControl' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'refreshAndVerifyDrugTable' : ActorMethod<[], DrugVerificationResult>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'savePrescriberDetailsForPatient' : ActorMethod<
     [string, PrescriberDetails],

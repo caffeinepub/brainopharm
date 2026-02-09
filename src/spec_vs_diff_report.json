@@ -1,76 +1,76 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-09T12:10:24.129Z",
-  "summary": "Diff adds a new client-side local interaction computation service and updates DrugInteractionsModule to use new interaction query hooks from useQueries, suggesting progress toward fresh, local, React Query-based interaction checks. However, the diff summary does not provide enough explicit evidence that all required validation rules/messages and all three interaction hooks (with correct query-key normalization and loading/error wiring) are fully implemented as specified. The diff summary also shows multiple unrelated UI/features added outside the requested scope.",
+  "generatedAt": "2026-02-09T16:13:09.090Z",
+  "summary": "Diff adds a client-side drug list verification utility and updates the Drug Database UI module with full-list filtering and pagination scaffolding, plus new query hooks for refresh+verify. However, there is no evidence that the curated drug dataset file was updated (REQ-1), nor clear evidence that backend drug query methods were fixed to prevent truncation (REQ-2). Several unrelated frontend features/UI changes are also indicated in the file summaries.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "Replace stubbed interaction-check hooks with real client-side React Query queries for Drug-Drug, Drug-Food, and Food-Food, including loading/error states and query keys that include normalized inputs.",
-      "reason": "Although useQueries.ts is described as adding useQuery-based hooks and DrugInteractionsModule imports the new hooks, the provided truncated excerpts do not show the actual implementations of useCheckMultiDrugInteraction/useCheckDrugFoodInteractions/useCheckFoodFoodInteractions, nor do they explicitly show the queryKey construction including normalized inputs and explicit loading/error state handling in the module.",
+      "requirement": "Update the curated drug dataset so the complete drug list is up to date and includes missing entries, with required fields and deterministic deduplication behavior.",
+      "reason": "The diff summary does not show any modification to `frontend/src/data/curatedDrugDataset.ts` contents (only a new import from it). Without a diff for that dataset file, there is no evidence the dataset itself was updated or that entries were added/changed to meet required fields and deduplication acceptance criteria.",
       "evidence": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/components/DrugInteractionsModule.tsx"
+        "frontend/src/services/drugListVerification.ts (imports normalizeDrugName from curatedDrugDataset, but does not modify the dataset)",
+        "No diff entry shown for frontend/src/data/curatedDrugDataset.ts"
       ]
     },
     {
       "id": "REQ-2",
-      "requirement": "Implement and enforce input validation for manual checks across Drug-Drug, Drug-Food, Food-Food with the specified clear English validation messages; do not run checks when validation fails.",
-      "reason": "DrugInteractionsModule imports findDuplicateNames and local result types, but the truncated diff excerpt does not show the validation logic or any of the required exact English messages (including the two exact Drug-Drug messages), nor does it show that checks are prevented from running when validation fails for all three tabs.",
+      "requirement": "Ensure backend drug query methods return complete datasets with correct filtering, independent of user profile state (no truncation in getAllDrugs/approved/banned results).",
+      "reason": "The `backend/main.mo` diff content shown is truncated and contains only type definitions in the excerpt; there is no evidence in the provided diff summary that `getAllDrugs` or other drug query methods were changed to address truncation or filtering correctness.",
       "evidence": [
-        "frontend/src/components/DrugInteractionsModule.tsx"
+        "backend/main.mo (truncated excerpt shows type declarations only; no getAllDrugs/approved/banned implementation changes visible)"
       ]
     },
     {
       "id": "REQ-3",
-      "requirement": "Ensure results are computed from current local datasets/indexes for drug-drug, drug-food, and food-food and work without backend/actor availability; include 'No interaction data found...' cards for missing drug-drug pairs and consistent result shapes for drug-food/food-food.",
-      "reason": "A new localInteractionCheckService and index lookups are added, and DrugInteractionsModule includes a 'No interaction data found' card UI for drug-drug. However, due to truncation, the diff summary does not fully evidence that drug-food and food-food computations use the correct local datasets for each combination/pair and return the exact result shapes used by the existing UI cards, nor that the UI is explicitly resilient when the actor is unavailable.",
+      "requirement": "A single user action triggers refresh/update of the drug dataset and then verification; verification results are exposed to the UI with success/failure and human-readable failure summary.",
+      "reason": "A verification utility exists and the UI imports it, and hooks are referenced, but the provided diff summary does not show the actual UI rendering of verification outcomes nor the backend portion of a combined refresh+verify workflow. The file summary claims new hooks exist, but the shown `useQueries.ts` excerpt is truncated before the drug-related additions.",
       "evidence": [
-        "frontend/src/services/localInteractionCheckService.ts",
-        "frontend/src/components/DrugInteractionsModule.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/services/drugListVerification.ts",
+        "frontend/src/components/DrugTableModule.tsx (imports verifyDrugList; uses useRefreshAndVerifyDrugTable/useGetLastDrugVerification, but the rendering/trigger behavior is truncated)",
+        "frontend/src/hooks/useQueries.ts (truncated; drug verification hooks not visible in excerpt)"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Preserve CSV export over all filtered rows (not just visible subset) when pagination/virtualization is used, and ensure drug details modal works for any item in the dataset.",
+      "reason": "Pagination is introduced (ITEMS_PER_PAGE = 50; currentPage state; pagination icons imported), and filtering is described as operating on the full list, but the truncated diff does not show CSV export logic or confirm that export uses all filtered rows rather than just the current page, nor does it confirm modal behavior for any dataset item under pagination.",
+      "evidence": [
+        "frontend/src/components/DrugTableModule.tsx (pagination constants/state present; Download icon imported; remainder of implementation truncated)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Added/modified application-wide UI/branding and footer theme changes (professional white/blue theme, gradient background, academic disclaimer text).",
-      "reason": "Not requested by the BuildRequest, which focuses only on fixing interaction checker freshness, validation, and local computation behavior.",
+      "description": "Addition of a new 'Drug-Drug Interaction Database' tab and related interaction features (compute interactions, new services) beyond the requested drug list update/verification scope.",
+      "reason": "Not requested in REQ-1..REQ-4; file summary explicitly claims a new dashboard tab and interaction services/hooks.",
       "evidence": [
-        "frontend-file-summaries.txt (frontend/src/components/Footer.tsx)"
+        "frontend-file-summaries.txt (Dashboard: \"nine primary tabs including new Drug-Drug Interaction Database tab\")",
+        "frontend/src/hooks/useQueries.ts (imports drugDrugInteractionService and localInteractionCheckService utilities in excerpt)"
       ]
     },
     {
-      "description": "Dashboard changes introducing new tabs/features (e.g., new Drug-Drug Interaction Database tab, intelligent prefetch on hover, WAVEBOT widget integration).",
-      "reason": "Not requested; BuildRequest is narrowly scoped to the manual interaction checker updating correctly across three tabs.",
+      "description": "WAVEBOT widget integration and performance behaviors like 'intelligent prefetch on hover'.",
+      "reason": "Not requested by any requirement; appears as additional feature work.",
       "evidence": [
-        "frontend-file-summaries.txt (frontend/src/pages/Dashboard.tsx)"
+        "frontend-file-summaries.txt (Dashboard: \"WAVEBOT widget integration\", \"intelligent prefetch on hover\")"
       ]
     },
     {
-      "description": "Login/auth UX changes (enhanced error handling, retry functionality, improved messaging for Internet Identity popup interactions).",
-      "reason": "Not requested; authentication behavior is outside the interaction checker requirements.",
+      "description": "Broad UI/UX redesign changes across Header/Footer/Login/Profile/Patient modules unrelated to drug dataset completeness, backend truncation, verification workflow, or Drug Database tab rendering.",
+      "reason": "Not requested in REQ-1..REQ-4; multiple components are described as being enhanced with new themes, branding, disclaimers, and validations.",
       "evidence": [
-        "frontend-file-summaries.txt (frontend/src/components/LoginScreen.tsx)"
-      ]
-    },
-    {
-      "description": "Broad form validation/accessibility and performance refactors across patient/lab/medication/ADR modules (memoization, focus management, aria wiring, range checking).",
-      "reason": "Not requested; BuildRequest does not ask for changes outside the Drug Interaction module and its hooks/services.",
-      "evidence": [
-        "frontend-file-summaries.txt (frontend/src/components/PatientManagement.tsx)",
-        "frontend-file-summaries.txt (frontend/src/components/LabResultsForm.tsx)",
-        "frontend-file-summaries.txt (frontend/src/components/MedicationForm.tsx)",
-        "frontend-file-summaries.txt (frontend/src/components/AdrForm.tsx)"
+        "frontend-file-summaries.txt (Header/Footer/LoginScreen/ProfileSetupModal/PatientManagement/etc. described as enhanced/optimized)"
       ]
     }
   ],
-  "confidence": 0.56,
+  "confidence": 0.62,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/DrugInteractionsModule.tsx",
+    "frontend/src/components/DrugTableModule.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/services/localInteractionCheckService.ts",
+    "frontend/src/services/drugListVerification.ts",
     "project_state.json"
   ]
 }

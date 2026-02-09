@@ -2,56 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-replace-the-stubbed-interaction-check-hooks-with-real-client-side-react-query-queries-so-that-clicking-check-interactions-returns-and-displays-the-latest-results-based-on-the-current-manually-entered-inputs-for-drug-drug-multi-drug-drug-food-and-food-food",
-      "featureTitle": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
+      "featureId": "feature-add-a-verification-workflow-that-runs-after-a-drug-list-refresh-update-to-confirm-that-adds-and-updates-were-applied-correctly-and-expose-the-verification-result-to-the-ui",
+      "featureTitle": "Add a verification workflow that runs after a drug-list refresh/update to confirm that adds and updates were applied correctly, and expose the verification result to the UI.",
       "files": [
-        "frontend/src/components/DrugInteractionsModule.tsx",
+        "frontend/src/components/DrugTableModule.tsx",
         "frontend/src/hooks/useQueries.ts",
-        "frontend/src/services/localInteractionCheckService.ts"
-      ],
-      "components": [
-        "authorization@3.0.0",
-        "http-outcalls@3.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-and-enforce-input-validation-for-manual-interaction-checks-across-drug-drug-drug-food-and-food-food-before-running-the-check-and-display-clear-english-validation-messages-in-the-module-when-validation-fails",
-      "featureTitle": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
-      "files": [
-        "frontend/src/components/DrugInteractionsModule.tsx",
-        "frontend/src/services/localInteractionCheckService.ts"
-      ],
-      "components": [
-        "authorization@3.0.0",
-        "http-outcalls@3.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-ensure-that-interaction-results-shown-in-the-drug-interaction-module-are-computed-from-the-current-local-datasets-indexes-and-are-not-blocked-by-backend-availability-including-drug-drug-lookups-via-the-local-drug-drug-interaction-dataset-index-drug-food-lookups-via-the-drug-food-dataset-index-and-food-food-lookups-via-the-food-food-dataset-index",
-      "featureTitle": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
-      "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/services/localInteractionCheckService.ts"
+        "frontend/src/services/drugListVerification.ts"
       ],
       "components": [
         "authorization@3.0.0",
@@ -65,6 +21,28 @@
       ],
       "testIds": [
         "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-drug-database-ui-to-reliably-render-the-entire-corresponding-dataset-in-the-all-drugs-approved-banned-tabs-with-client-side-search-category-filters-applied-to-the-full-list-not-a-partially-loaded-subset-if-the-list-is-large-implement-a-ui-strategy-pagination-or-virtualization-that-still-allows-viewing-the-full-list-while-preserving-existing-search-csv-export-and-the-drug-details-modal",
+      "featureTitle": "Update the Drug Database UI to reliably render the entire corresponding dataset in the All Drugs / Approved / Banned tabs, with client-side search/category filters applied to the full list (not a partially loaded subset). If the list is large, implement a UI strategy (pagination or virtualization) that still allows viewing the full list while preserving existing search, CSV export, and the drug details modal.",
+      "files": [
+        "frontend/src/components/DrugTableModule.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "authorization@3.0.0",
+        "http-outcalls@3.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

@@ -1,34 +1,28 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
-  "architectural_notes": [],
-  "known_issues": [
-    "Drug Interaction checker does not display fully updated results after manual data entry when running Drug-Drug, Drug-Food, and Food-Food interaction checks."
+  "summary": "Project to maintain an up-to-date drug database/list, including full-list updates and post-update verification to ensure additions/updates apply correctly.",
+  "architectural_notes": [
+    "Include a verification step after drug-list updates to confirm records were added/updated correctly and lists load fully."
   ],
-  "isFixRequest": true,
+  "known_issues": [
+    "Automated build/deployment attempts failed with AI processing errors during full drug-list update request."
+  ],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-replace-the-stubbed-interaction-check-hooks-with-real-client-side-react-query-queries-so-that-clicking-check-interactions-returns-and-displays-the-latest-results-based-on-the-current-manually-entered-inputs-for-drug-drug-multi-drug-drug-food-and-food-food",
-      "title": "Replace the stubbed interaction-check hooks with real client-side React Query queries so that clicking \"Check interactions\" returns and displays the latest results based on the current manually-entered inputs for: Drug-Drug (multi-drug), Drug-Food, and Food-Food.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-and-enforce-input-validation-for-manual-interaction-checks-across-drug-drug-drug-food-and-food-food-before-running-the-check-and-display-clear-english-validation-messages-in-the-module-when-validation-fails",
-      "title": "Implement and enforce input validation for manual interaction checks across Drug-Drug, Drug-Food, and Food-Food before running the check, and display clear English validation messages in the module when validation fails.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-that-interaction-results-shown-in-the-drug-interaction-module-are-computed-from-the-current-local-datasets-indexes-and-are-not-blocked-by-backend-availability-including-drug-drug-lookups-via-the-local-drug-drug-interaction-dataset-index-drug-food-lookups-via-the-drug-food-dataset-index-and-food-food-lookups-via-the-food-food-dataset-index",
-      "title": "Ensure that interaction results shown in the Drug Interaction module are computed from the current local datasets/indexes and are not blocked by backend availability, including: drug-drug lookups via the local drug-drug interaction dataset/index, drug-food lookups via the drug-food dataset/index, and food-food lookups via the food-food dataset/index.",
+      "id": "feature-add-a-verification-workflow-that-runs-after-a-drug-list-refresh-update-to-confirm-that-adds-and-updates-were-applied-correctly-and-expose-the-verification-result-to-the-ui",
+      "title": "Add a verification workflow that runs after a drug-list refresh/update to confirm that adds and updates were applied correctly, and expose the verification result to the UI.",
       "reqIds": [
         "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-drug-database-ui-to-reliably-render-the-entire-corresponding-dataset-in-the-all-drugs-approved-banned-tabs-with-client-side-search-category-filters-applied-to-the-full-list-not-a-partially-loaded-subset-if-the-list-is-large-implement-a-ui-strategy-pagination-or-virtualization-that-still-allows-viewing-the-full-list-while-preserving-existing-search-csv-export-and-the-drug-details-modal",
+      "title": "Update the Drug Database UI to reliably render the entire corresponding dataset in the All Drugs / Approved / Banned tabs, with client-side search/category filters applied to the full list (not a partially loaded subset). If the list is large, implement a UI strategy (pagination or virtualization) that still allows viewing the full list while preserving existing search, CSV export, and the drug details modal.",
+      "reqIds": [
+        "REQ-4"
       ],
       "version": 1
     }
@@ -36,12 +30,28 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix Drug Interaction section so that when manually entering data and checking Drug-Drug, Drug-Food, or Food-Food interactions, clicking 'Check interactions' shows fully updated results (including required validation).",
+      "summary": "Update the entire drug list to be up-to-date, then run verification to ensure all items add/update correctly and lists load fully.",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Update the application’s curated drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Ensure backend drug query methods return complete datasets (no truncation): `getAllDrugs` returns all approved + banned drugs, and filtered endpoints (approved/banned) return the full correctly filtered lists, independent of any user profile state.",
+      "reqIds": [
+        "REQ-2"
+      ],
       "status": "pending"
     }
   ],
-  "projectName": "Fix Drug Interaction checker to show fully updated results after manual entry (Drug-Drug, Drug-Food, Food-Food)",
+  "projectName": "Update full drug list dataset and add verification that additions/updates apply correctly",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }
