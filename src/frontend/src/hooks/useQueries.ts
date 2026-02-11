@@ -682,7 +682,7 @@ export function useSavePrescriberDetails() {
   });
 }
 
-// Drug Verification queries - NEW
+// Drug Verification queries
 export function useRefreshAndVerifyDrugTable() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -693,10 +693,11 @@ export function useRefreshAndVerifyDrugTable() {
       return actor.refreshAndVerifyDrugTable();
     },
     onSuccess: () => {
-      // Invalidate all drug-related queries to refresh UI
+      // Invalidate all drug-related queries to trigger immediate refetch
       queryClient.invalidateQueries({ queryKey: ['allDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['approvedDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['bannedDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['categorizedDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['lastDrugVerification'] });
     },
   });

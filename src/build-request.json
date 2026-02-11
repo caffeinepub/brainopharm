@@ -1,142 +1,81 @@
 {
   "kind": "build_request",
-  "title": "Add prescriber details to Patient Registry and refresh drug dataset + verification",
+  "title": "Fix drug database list to include approved and banned drugs and verify correctness",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "In the Patient Registry workflow, provide a Prescriber Details section for the selected patient with fields: Prefix (dropdown), Full Name, Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and ensure it is reachable from the Patient Registry tab without leaving the patient context.",
-      "target": "frontend",
+      "text": "Update the backend drug table source so that the drug database returns a complete, working list that includes both approved drugs and banned drugs (with correct status values) when the frontend calls `getAllDrugs`, `getApprovedDrugs`, and `getBannedDrugs`.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-5",
+          "msg-9"
         ],
         "quotes": [
-          "In patient registry tab add prescribers details like prefix dropdown section add Dr., practicioner nurse, pharmacist, then registration number, address, mail id, contact number, specilization"
+          "In drug database i need everything working correctly. please add the drugs that are approved and banned to the list, please",
+          "yes do it"
         ]
       },
       "acceptanceCriteria": [
-        "From the Patient Registry area, when a patient is selected, there is a visible way to open/view the Prescriber Details form for that patient.",
-        "The Prescriber Details form contains the requested fields and uses English labels (e.g., \"Mail ID\", \"Registration Number\", \"Specialization\").",
-        "Prefix is a dropdown with exactly these user-facing options: \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\"."
+        "Calling `getAllDrugs()` returns a non-empty list of `Drug` records.",
+        "Calling `getApprovedDrugs()` returns only drugs where `status` is `#approved` and the list is non-empty.",
+        "Calling `getBannedDrugs()` returns only drugs where `status` is `#banned` and the list is non-empty.",
+        "Each returned `Drug` has non-empty `name`, `category`, `description`, and `safetyInfo`, and has a valid `source` variant.",
+        "No traps occur for authenticated users when fetching drug lists."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update the Prescriber prefix dropdown labeling so the user-facing value for PrescriberPrefix.practitionerNurse is \"Practitioner Nurse\" (not \"Nurse\"), and ensure all user-facing text is correctly spelled and consistent across the Prescriber Details UI and Case Summary.",
-      "target": "frontend",
+      "text": "Ensure the backend `refreshAndVerifyDrugTable` flow reliably refreshes the stored drug list used by `getAllDrugs()` and persists a `DrugVerificationResult` that the frontend can fetch via `getLastDrugVerification()`.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-5",
+          "msg-9"
         ],
         "quotes": [
-          "add prescribers details like prefix dropdown section add Dr., practicioner nurse, pharmacist"
+          "In drug database i need everything working correctly. please add the drugs that are approved and banned to the list, please",
+          "yes do it"
         ]
       },
       "acceptanceCriteria": [
-        "The Prescriber Details prefix dropdown shows \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\" as the selectable labels.",
-        "Anywhere the prefix is displayed (including the case summary view), the label \"Practitioner Nurse\" is used (and not shortened to \"Nurse\")."
+        "`refreshAndVerifyDrugTable()` returns a `DrugVerificationResult` containing `allDrugs`, `verifiedApprovedDrugs`, `verifiedBannedDrugs`, and `verificationTimestamp`.",
+        "After `refreshAndVerifyDrugTable()` succeeds, subsequent calls to `getAllDrugs()` reflect the refreshed dataset.",
+        "`getLastDrugVerification()` returns the latest verification result after a refresh and returns `null` (or equivalent) before any refresh has been performed."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Implement backend support for saving and retrieving prescriber details per patient, including: (1) a query method to get prescriber details by patientId, and (2) an update method to save/replace prescriber details for a patientId, performing validation consistent with backend validation rules.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "add prescribers details ... then registration number, address, mail id, contact number, specilization"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend exposes a query to retrieve prescriber details for a given patientId and returns an optional result (no trap when missing).",
-        "Backend exposes an update call to save prescriber details for a given patientId and rejects invalid input with a clear error response (e.g., missing required fields).",
-        "Prescriber details are stored and returned with all fields: prefix, fullName, registrationNumber, specialization, contactNumber, email, address.",
-        "Frontend PrescriberDetailsSection successfully loads existing saved details (if present) and can save updates without console errors."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Persist prescriber details across canister upgrades by adding stable storage for the prescriber details map keyed by patientId, and add a conditional migration if required by the existing state layout.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "please check everything, In patient registry tab add prescribers details ..."
-        ]
-      },
-      "acceptanceCriteria": [
-        "After saving prescriber details for a patient, performing a simulated upgrade (local) retains prescriber details for that patientId.",
-        "No existing patient/lab/medication/ADR data becomes inaccessible after the change."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Review and update the drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
+      "text": "Align the Drug Database UI behavior with the backend lists so users can reliably view and filter the complete drug dataset by Approved/Banned/All without missing entries, and the Refresh & Verify button updates the table and shows the verification banner based on the latest backend result.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-5",
+          "msg-9"
         ],
         "quotes": [
-          "check and add all the drug details and if you feel any thing require then please add them so it becomes fully up to date."
+          "In drug database i need everything working correctly. please add the drugs that are approved and banned to the list, please",
+          "yes do it"
         ]
       },
       "acceptanceCriteria": [
-        "The curated dataset used by the app is updated/expanded, and each entry conforms to the minimum required fields: name, status, date, category, description, source, safetyInfo.",
-        "Drug details views (e.g., the drug details modal) have no missing/undefined values for the above minimum fields; if a field is unknown, it is represented as an explicit, user-friendly placeholder in English (e.g., \"Unknown\")."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Add/ensure a post-refresh drug verification workflow exists that checks that drug list additions/updates were applied correctly (e.g., deduplication, required-field completeness, counts), and expose the latest verification result to the UI.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "check and add all the drug details ... fully up to date."
-        ]
-      },
-      "acceptanceCriteria": [
-        "There is a backend-accessible or frontend-driven verification step that runs after a drug list refresh/update and produces a structured verification result including a timestamp.",
-        "The UI shows the latest verification timestamp and a clear pass/fail or warnings summary (English) that helps confirm the list is fully loaded and consistent.",
-        "Verification includes at least: total drug count, count by status (approved/banned), and detection of duplicate normalized names."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Perform an application review focused on Patient Registry + Drug Database screens and fix any issues that prevent the full datasets (patients/drugs) from loading and being usable (e.g., missing queries, partial rendering, broken filters/pagination), without introducing unrelated features.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "please check everything"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Patient Registry patient list loads reliably and selecting a patient consistently loads associated modules (labs/medications/ADR/prescriber/summary).",
-        "Drug Database tabs (All/Approved/Banned) reliably render the full corresponding dataset and search/category filters apply to the full list (not a partially loaded subset).",
-        "No runtime errors in console during common flows: select patient, open prescriber tab, save prescriber details, open drug database, open drug details modal."
+        "In the Drug Database module, the Approved tab shows only approved drugs from the backend and the Banned tab shows only banned drugs from the backend.",
+        "After clicking “Refresh & Verify”, the table data refreshes and the verification banner displays a clear pass/fail summary based on the refreshed data.",
+        "The counters (Total, Approved, Banned) match the current backend dataset returned by `getAllDrugs()` and update after refresh.",
+        "Search, category filtering, pagination, and CSV export operate on the filtered dataset without runtime errors when fields are missing or empty."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo; only add backend/migration.mo if required for stable-state upgrades.",
-    "Do not edit any frontend files under frontend/src/components/ui or any paths listed as immutable in SYSTEM_CONTEXT.",
-    "Use English for all user-facing text."
+    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
+    "Do not modify any files under `frontend/src/components/ui` or the immutable hook/bootstrap files listed in `SYSTEM_CONTEXT.frontend.immutablePaths`.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Integrating external drug databases or live third-party APIs for real-time drug updates.",
+    "Implementing real external API scraping/parsing for CDSCO/MIMS/Gazette sources (client-side simulated services may remain as-is).",
     "Adding new authentication providers beyond Internet Identity.",
-    "Building real-time features (websockets/push notifications/chat)."
+    "Adding new drug interaction features beyond ensuring the drug list itself is correct and complete."
   ],
   "imageRequirements": {
     "required": [],

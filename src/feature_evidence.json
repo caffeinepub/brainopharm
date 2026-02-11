@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-in-the-patient-registry-workflow-provide-a-prescriber-details-section-for-the-selected-patient-with-fields-prefix-dropdown-full-name-registration-number-address-mail-id-email-contact-number-and-specialization-and-ensure-it-is-reachable-from-the-patient-registry-tab-without-leaving-the-patient-context",
-      "featureTitle": "In the Patient Registry workflow, provide a Prescriber Details section for the selected patient with fields: Prefix (dropdown), Full Name, Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and ensure it is reachable from the Patient Registry tab without leaving the patient context.",
+      "featureId": "feature-align-the-drug-database-ui-behavior-with-the-backend-lists-so-users-can-reliably-view-and-filter-the-complete-drug-dataset-by-approved-banned-all-without-missing-entries-and-the-refresh-verify-button-updates-the-table-and-shows-the-verification-banner-based-on-the-latest-backend-result",
+      "featureTitle": "Align the Drug Database UI behavior with the backend lists so users can reliably view and filter the complete drug dataset by Approved/Banned/All without missing entries, and the Refresh & Verify button updates the table and shows the verification banner based on the latest backend result.",
       "files": [
-        "frontend/src/components/PrescriberDetailsSection.tsx"
+        "frontend/src/components/DrugTableModule.tsx",
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "authorization@3.0.0",
@@ -18,29 +19,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-prescriber-prefix-dropdown-labeling-so-the-user-facing-value-for-prescriberprefix-practitionernurse-is-practitioner-nurse-not-nurse-and-ensure-all-user-facing-text-is-correctly-spelled-and-consistent-across-the-prescriber-details-ui-and-case-summary",
-      "featureTitle": "Update the Prescriber prefix dropdown labeling so the user-facing value for PrescriberPrefix.practitionerNurse is \"Practitioner Nurse\" (not \"Nurse\"), and ensure all user-facing text is correctly spelled and consistent across the Prescriber Details UI and Case Summary.",
-      "files": [
-        "frontend/src/components/CaseSummary.tsx",
-        "frontend/src/components/PrescriberDetailsSection.tsx"
-      ],
-      "components": [
-        "authorization@3.0.0",
-        "http-outcalls@3.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
+        "REQ-3"
       ],
       "confidence": "high"
     }

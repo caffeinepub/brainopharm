@@ -1,24 +1,18 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Healthcare/patient registry application; user requests enhancing Patient Registry tab with prescriber details and updating drug details dataset to be fully up to date.",
+  "summary": "Healthcare app with patient registry and a drug database/list; user requests ensuring the drug database works correctly and includes approved and banned drugs.",
   "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "Previous attempt to process/build the drug-list update request failed with an AI processing error; request may need clearer specification."
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-in-the-patient-registry-workflow-provide-a-prescriber-details-section-for-the-selected-patient-with-fields-prefix-dropdown-full-name-registration-number-address-mail-id-email-contact-number-and-specialization-and-ensure-it-is-reachable-from-the-patient-registry-tab-without-leaving-the-patient-context",
-      "title": "In the Patient Registry workflow, provide a Prescriber Details section for the selected patient with fields: Prefix (dropdown), Full Name, Registration Number, Address, Mail ID (email), Contact Number, and Specialization, and ensure it is reachable from the Patient Registry tab without leaving the patient context.",
+      "id": "feature-align-the-drug-database-ui-behavior-with-the-backend-lists-so-users-can-reliably-view-and-filter-the-complete-drug-dataset-by-approved-banned-all-without-missing-entries-and-the-refresh-verify-button-updates-the-table-and-shows-the-verification-banner-based-on-the-latest-backend-result",
+      "title": "Align the Drug Database UI behavior with the backend lists so users can reliably view and filter the complete drug dataset by Approved/Banned/All without missing entries, and the Refresh & Verify button updates the table and shows the verification banner based on the latest backend result.",
       "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-prescriber-prefix-dropdown-labeling-so-the-user-facing-value-for-prescriberprefix-practitionernurse-is-practitioner-nurse-not-nurse-and-ensure-all-user-facing-text-is-correctly-spelled-and-consistent-across-the-prescriber-details-ui-and-case-summary",
-      "title": "Update the Prescriber prefix dropdown labeling so the user-facing value for PrescriberPrefix.practitionerNurse is \"Practitioner Nurse\" (not \"Nurse\"), and ensure all user-facing text is correctly spelled and consistent across the Prescriber Details UI and Case Summary.",
-      "reqIds": [
-        "REQ-2"
+        "REQ-3"
       ],
       "version": 1
     }
@@ -26,65 +20,28 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add Prescriber Details section to Patient Registry tab (prefix dropdown: Dr./Practitioner Nurse/Pharmacist; registration number; address; email; contact number; specialization)",
+      "summary": "Update drug database/list to include approved drugs and banned drugs, and ensure drug database functionality works correctly",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Review and update/expand drug details dataset to ensure all drugs are included and information is up to date",
-      "reqIds": [],
+      "summary": "Update the backend drug table source so that the drug database returns a complete, working list that includes both approved drugs and banned drugs (with correct status values) when the frontend calls `getAllDrugs`, `getApprovedDrugs`, and `getBannedDrugs`.",
+      "reqIds": [
+        "REQ-1"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Perform overall application review/QA pass and add any missing required fields/data to make system fully up to date",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Implement backend support for saving and retrieving prescriber details per patient, including: (1) a query method to get prescriber details by patientId, and (2) an update method to save/replace prescriber details for a patientId, performing validation consistent with backend validation rules.",
+      "summary": "Ensure the backend `refreshAndVerifyDrugTable` flow reliably refreshes the stored drug list used by `getAllDrugs()` and persists a `DrugVerificationResult` that the frontend can fetch via `getLastDrugVerification()`.",
       "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Persist prescriber details across canister upgrades by adding stable storage for the prescriber details map keyed by patientId, and add a conditional migration if required by the existing state layout.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Review and update the drug dataset so the complete drug list is up to date and includes missing entries as needed, ensuring every drug record includes at minimum: name, status (approved/banned), date, category (when known), description, source, and safetyInfo.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-9",
-      "summary": "Add/ensure a post-refresh drug verification workflow exists that checks that drug list additions/updates were applied correctly (e.g., deduplication, required-field completeness, counts), and expose the latest verification result to the UI.",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-10",
-      "summary": "Perform an application review focused on Patient Registry + Drug Database screens and fix any issues that prevent the full datasets (patients/drugs) from loading and being usable (e.g., missing queries, partial rendering, broken filters/pagination), without introducing unrelated features.",
-      "reqIds": [
-        "REQ-7"
+        "REQ-2"
       ],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "Add prescriber details to Patient Registry and refresh drug dataset + verification",
+  "projectName": "Fix drug database list to include approved and banned drugs and verify correctness",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

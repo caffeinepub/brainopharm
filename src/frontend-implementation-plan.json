@@ -1,128 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Prescriber Details UI + drug dataset refresh and verification visibility",
+  "title": "Align Drug Database UI with backend drug lists and refresh/verification results",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Ensure Prescriber Details section is available within the selected-patient context in Patient Registry, with all requested fields and English labels.",
+      "id": "REQ-3",
+      "summary": "Update Drug Database UI to use backend-provided Approved/Banned/All lists consistently; ensure Refresh & Verify refreshes data and shows a clear verification banner; keep counters, search/filter/pagination, and CSV export operating on the currently filtered dataset without runtime errors.",
       "acceptanceCriteria": [
-        "From the Patient Registry area, when a patient is selected, there is a visible way to open/view the Prescriber Details form for that patient.",
-        "The Prescriber Details form contains the requested fields and uses English labels (e.g., \"Mail ID\", \"Registration Number\", \"Specialization\").",
-        "Prefix is a dropdown with exactly these user-facing options: \"Dr.\", \"Practitioner Nurse\", \"Pharmacist\"."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
-          "operation": "modify",
-          "description": "Update the Prescriber Details form to match the required field set/labels, keep it scoped to the selected patient context, and ensure required-field validation + focus behavior works reliably (avoid using stale error state when focusing). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/CaseEntry.tsx",
-          "operation": "modify",
-          "description": "Confirm/adjust the Patient Registry selected-patient workflow so the Prescriber Details section remains reachable via the existing in-context tabs (without navigating away from the selected patient). Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Standardize prescriber prefix labeling across the Prescriber Details UI and Case Summary (use “Practitioner Nurse”, not “Nurse”).",
-      "acceptanceCriteria": [
-        "The Prescriber Details prefix dropdown shows \"Dr.\", \"Practitioner Nurse\", and \"Pharmacist\" as the selectable labels.",
-        "Anywhere the prefix is displayed (including the case summary view), the label \"Practitioner Nurse\" is used (and not shortened to \"Nurse\")."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/PrescriberDetailsSection.tsx",
-          "operation": "modify",
-          "description": "Update PrescriberPrefix.practitionerNurse user-facing label to \"Practitioner Nurse\" (not \"Nurse\"); ensure dropdown shows exactly the three required options and that any helper label formatting functions return consistent spelling. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/CaseSummary.tsx",
-          "operation": "modify",
-          "description": "Audit prefix label rendering in the case summary and ensure it remains consistent with the Prescriber Details UI (\"Practitioner Nurse\" everywhere). Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Refresh/expand the curated drug dataset so every drug entry has the minimum required fields and drug details UI never shows missing/undefined values.",
-      "acceptanceCriteria": [
-        "The curated dataset used by the app is updated/expanded, and each entry conforms to the minimum required fields: name, status, date, category, description, source, safetyInfo.",
-        "Drug details views (e.g., the drug details modal) have no missing/undefined values for the above minimum fields; if a field is unknown, it is represented as an explicit, user-friendly placeholder in English (e.g., \"Unknown\")."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/data/curatedDrugDataset.ts",
-          "operation": "modify",
-          "description": "Review and update/expand the curated drug dataset so each drug record includes the minimum required fields (name, status, date, category when known, description, source, safetyInfo). Where data is unknown, normalize to explicit English placeholders (e.g., \"Unknown\") rather than leaving fields empty/undefined. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/DrugDetailsModal.tsx",
-          "operation": "modify",
-          "description": "Ensure drug details display never renders missing/undefined values for required fields; align placeholders to \"Unknown\" (per requirement) and keep formatting robust for empty strings. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/DrugTableModule.tsx",
-          "operation": "modify",
-          "description": "Ensure drug table and CSV export use the same user-friendly placeholders (\"Unknown\") for required fields when unknown, preventing blank/undefined output. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Ensure a post-refresh drug verification workflow runs after refresh and expose the latest verification result (timestamp + pass/fail/warnings + required metrics) in the UI.",
-      "acceptanceCriteria": [
-        "There is a backend-accessible or frontend-driven verification step that runs after a drug list refresh/update and produces a structured verification result including a timestamp.",
-        "The UI shows the latest verification timestamp and a clear pass/fail or warnings summary (English) that helps confirm the list is fully loaded and consistent.",
-        "Verification includes at least: total drug count, count by status (approved/banned), and detection of duplicate normalized names."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/services/drugListVerification.ts",
-          "operation": "modify",
-          "description": "Extend client-side drug list verification to include the required metrics: total count, count by status (approved/banned), and duplicate detection using normalized names; return a structured report suitable for UI display with an English pass/fail or warnings summary. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/DrugTableModule.tsx",
-          "operation": "modify",
-          "description": "Enhance the Drug Database verification UI to display the latest verification timestamp, a clear pass/fail or warnings summary, and the required verification metrics (total count, approved/banned counts, duplicate normalized name detection). Ensure it reflects the latest backend-provided verification result and/or the client-side verification report after refresh. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Wire/adjust React Query hooks usage as needed so the UI can reliably fetch and display the latest verification result after refresh (e.g., ensure relevant queries are invalidated/refetched and that actor availability gating does not prevent rendering). Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Review Patient Registry and Drug Database screens and fix issues that prevent full datasets (patients/drugs) from loading and being usable.",
-      "acceptanceCriteria": [
-        "Patient Registry patient list loads reliably and selecting a patient consistently loads associated modules (labs/medications/ADR/prescriber/summary).",
-        "Drug Database tabs (All/Approved/Banned) reliably render the full corresponding dataset and search/category filters apply to the full list (not a partially loaded subset).",
-        "No runtime errors in console during common flows: select patient, open prescriber tab, save prescriber details, open drug database, open drug details modal."
+        "In the Drug Database module, the Approved tab shows only approved drugs from the backend and the Banned tab shows only banned drugs from the backend.",
+        "After clicking “Refresh & Verify”, the table data refreshes and the verification banner displays a clear pass/fail summary based on the refreshed data.",
+        "The counters (Total, Approved, Banned) match the current backend dataset returned by `getAllDrugs()` and update after refresh.",
+        "Search, category filtering, pagination, and CSV export operate on the filtered dataset without runtime errors when fields are missing or empty."
       ],
       "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Fix patient-selection loading reliability by ensuring useGetPatient exposes accurate loading state tied to the underlying patients query (avoid false \"Patient not found\" states while patient data is still loading). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/PatientManagement.tsx",
-          "operation": "modify",
-          "description": "Audit and fix any Patient Registry list/selection issues that can block full patient dataset usability (e.g., selection state edge cases, rendering guards, or errors during list refresh), without adding unrelated features. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/CaseEntry.tsx",
-          "operation": "modify",
-          "description": "Ensure selecting a patient consistently renders all associated modules (labs/medications/ADR/prescriber/summary) without transient errors; align with corrected loading states from hooks. Verify the component's usage instructions before implementing."
+          "description": "Ensure the drug database React Query hooks are wired so the UI can reliably use backend lists for All/Approved/Banned; update the Refresh & Verify mutation to invalidate and refetch drug-list queries (all/approved/banned) and the last verification query after a successful refresh so counters, tabs, and banners update immediately."
         },
         {
           "path": "frontend/src/components/DrugTableModule.tsx",
           "operation": "modify",
-          "description": "Audit and fix any Drug Database issues that could lead to partial rendering or filters/search only applying to a subset (ensure filtering is always applied to the full dataset before pagination, and verify tab switching/search/category filters reset pagination safely). Verify the component's usage instructions before implementing."
+          "description": "Align tab behavior with backend lists by using `useGetAllDrugs`, `useGetApprovedDrugs`, and `useGetBannedDrugs` as the authoritative sources for each tab (rather than filtering only from the all list). Ensure counters derive from `getAllDrugs()` results. Update Refresh & Verify flow to refresh the table by triggering query invalidations and to render a clear pass/fail verification banner computed from the latest backend `DrugVerificationResult` (and keep existing defensive handling for missing/empty fields across search, category filtering, pagination, and CSV export)."
         }
       ]
     }

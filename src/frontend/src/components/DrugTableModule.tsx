@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useGetAllDrugs, useGetMultiSourceLastUpdated, useGetMultiSourceSyncStatus, useRefreshMultiSourceData, useRefreshAndVerifyDrugTable, useGetLastDrugVerification } from '../hooks/useQueries';
+import { useGetAllDrugs, useGetApprovedDrugs, useGetBannedDrugs, useGetMultiSourceLastUpdated, useGetMultiSourceSyncStatus, useRefreshAndVerifyDrugTable, useGetLastDrugVerification } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
@@ -30,10 +30,12 @@ export default function DrugTableModule() {
   const [verificationResult, setVerificationResult] = useState<{ passed: boolean; summary: string } | null>(null);
   const { theme, setTheme } = useTheme();
 
+  // Use separate hooks for each tab to get authoritative backend data
   const { data: allDrugs = [], isLoading: isLoadingAll } = useGetAllDrugs();
+  const { data: approvedDrugs = [], isLoading: isLoadingApproved } = useGetApprovedDrugs();
+  const { data: bannedDrugs = [], isLoading: isLoadingBanned } = useGetBannedDrugs();
   const { data: lastUpdated } = useGetMultiSourceLastUpdated();
   const { data: syncStatus } = useGetMultiSourceSyncStatus();
-  const refreshMultiSource = useRefreshMultiSourceData();
   const refreshAndVerify = useRefreshAndVerifyDrugTable();
   const { data: lastVerification } = useGetLastDrugVerification();
 
@@ -50,23 +52,23 @@ export default function DrugTableModule() {
     setCurrentPage(1);
   }, [activeTab, debouncedSearch, categoryFilter]);
 
-  // Calculate drug counters
+  // Calculate drug counters from allDrugs (authoritative source)
   const drugCounters = useMemo(() => {
     const banned = allDrugs.filter(d => d.status === DrugStatus.banned).length;
     const approved = allDrugs.filter(d => d.status === DrugStatus.approved).length;
     return { banned, approved, total: allDrugs.length };
   }, [allDrugs]);
 
-  // Filter drugs based on active tab, search term, and category (FULL LIST)
+  // Get the current dataset based on active tab (use backend-provided lists)
+  const currentDataset = useMemo(() => {
+    if (activeTab === 'approved') return approvedDrugs;
+    if (activeTab === 'banned') return bannedDrugs;
+    return allDrugs;
+  }, [activeTab, allDrugs, approvedDrugs, bannedDrugs]);
+
+  // Filter drugs based on search term and category (from current dataset)
   const filteredDrugs = useMemo(() => {
-    let drugs: Drug[] = allDrugs;
-    
-    // Filter by status tab
-    if (activeTab === 'approved') {
-      drugs = drugs.filter(d => d.status === DrugStatus.approved);
-    } else if (activeTab === 'banned') {
-      drugs = drugs.filter(d => d.status === DrugStatus.banned);
-    }
+    let drugs: Drug[] = currentDataset;
 
     // Filter by category
     if (categoryFilter !== 'all') {
@@ -85,7 +87,7 @@ export default function DrugTableModule() {
     }
 
     return drugs;
-  }, [activeTab, allDrugs, debouncedSearch, categoryFilter]);
+  }, [currentDataset, debouncedSearch, categoryFilter]);
 
   // Paginate the filtered drugs for display
   const paginatedDrugs = useMemo(() => {
@@ -302,6 +304,9 @@ export default function DrugTableModule() {
   // Check if sync is in progress
   const isSyncing = syncStatus && syncStatus.cdsco?.status === 'pending';
 
+  // Determine loading state based on active tab
+  const isLoading = activeTab === 'all' ? isLoadingAll : activeTab === 'approved' ? isLoadingApproved : isLoadingBanned;
+
   return (
     <>
       <Card className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 shadow-xl">
@@ -447,37 +452,41 @@ export default function DrugTableModule() {
             </Card>
           </div>
 
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search drugs by name, category, or description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-              {autocompleteSuggestions.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border bg-white dark:bg-slate-900 shadow-lg">
-                  {autocompleteSuggestions.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-950"
-                      onClick={() => {
-                        setSearchTerm(suggestion);
-                        setDebouncedSearch(suggestion);
-                      }}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'approved' | 'banned')} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="all">All Drugs</TabsTrigger>
+              <TabsTrigger value="approved">Approved</TabsTrigger>
+              <TabsTrigger value="banned">Banned</TabsTrigger>
+            </TabsList>
 
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+            <div className="mb-6 flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search drugs by name, category, or description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+                {autocompleteSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg">
+                    {autocompleteSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSearchTerm(suggestion)}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -486,59 +495,29 @@ export default function DrugTableModule() {
                   <SelectItem value="painkiller">Painkiller</SelectItem>
                   <SelectItem value="fdc">FDC</SelectItem>
                   <SelectItem value="vitamin">Vitamin</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="general">General</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all">All Drugs ({drugCounters.total})</TabsTrigger>
-              <TabsTrigger value="approved">Approved ({drugCounters.approved})</TabsTrigger>
-              <TabsTrigger value="banned">Banned ({drugCounters.banned})</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="mt-6">
-              {isLoadingAll ? (
+            <TabsContent value={activeTab} className="mt-0">
+              {isLoading ? (
                 <div className="space-y-3">
-                  {[...Array(5)].map((_, i) => (
+                  {[...Array(10)].map((_, i) => (
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
+              ) : filteredDrugs.length === 0 ? (
+                <div className="text-center py-12">
+                  <Database className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-400">No drugs found</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                    {searchTerm || categoryFilter !== 'all' ? 'Try adjusting your filters' : 'The database is empty'}
+                  </p>
+                </div>
               ) : (
                 <>
-                  <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
-                    <span>
-                      Showing {paginatedDrugs.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to{' '}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredDrugs.length)} of {filteredDrugs.length} drugs
-                    </span>
-                    {totalPages > 1 && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-md border">
+                  <div className="rounded-md border border-gray-200 dark:border-gray-700">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -551,62 +530,58 @@ export default function DrugTableModule() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedDrugs.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                              No drugs found matching your criteria
+                        {paginatedDrugs.map((drug, index) => (
+                          <TableRow key={index} className="hover:bg-gray-50 dark:hover:bg-slate-800">
+                            <TableCell className="font-medium">{drug.name || 'Not available'}</TableCell>
+                            <TableCell>{getStatusBadge(drug.status, isNewDrug(drug.date))}</TableCell>
+                            <TableCell>{getCategoryBadge(drug.category)}</TableCell>
+                            <TableCell>{getSourceBadge(drug.source)}</TableCell>
+                            <TableCell className="text-sm text-gray-600 dark:text-gray-400">{formatDate(drug.date)}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDrugClick(drug)}
+                                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          paginatedDrugs.map((drug, idx) => (
-                            <TableRow key={idx} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleDrugClick(drug)}>
-                              <TableCell className="font-medium">{drug.name || 'Not available'}</TableCell>
-                              <TableCell>{getStatusBadge(drug.status, isNewDrug(drug.date))}</TableCell>
-                              <TableCell>{getCategoryBadge(drug.category)}</TableCell>
-                              <TableCell>{getSourceBadge(drug.source)}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{formatDate(drug.date)}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDrugClick(drug);
-                                  }}
-                                >
-                                  <Info className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
 
+                  {/* Pagination Controls */}
                   {totalPages > 1 && (
-                    <div className="mt-4 flex items-center justify-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
+                    <div className="mt-6 flex items-center justify-between">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredDrugs.length)} of {filteredDrugs.length} results
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </>
