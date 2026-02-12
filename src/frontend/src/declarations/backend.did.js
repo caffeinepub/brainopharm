@@ -100,6 +100,13 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const BulkDrugStoreUpdateResult = IDL.Record({
+  'added' : IDL.Nat,
+  'errors' : IDL.Vec(IDL.Text),
+  'duplicates' : IDL.Nat,
+  'totalAfterStore' : IDL.Nat,
+  'skippedEmpty' : IDL.Nat,
+});
 export const FourDrugInteractionInput = IDL.Record({
   'drug1' : IDL.Text,
   'drug2' : IDL.Text,
@@ -401,6 +408,16 @@ export const idlService = IDL.Service({
     ),
   'addRestrictedDrugCategory' : IDL.Func([RestrictedDrugCategory], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'bulkUpdateDrugDatabaseStore' : IDL.Func(
+      [IDL.Vec(Drug)],
+      [BulkDrugStoreUpdateResult],
+      [],
+    ),
+  'bulkUpdateDrugTableStore' : IDL.Func(
+      [IDL.Vec(Drug)],
+      [BulkDrugStoreUpdateResult],
+      [],
+    ),
   'checkDrugInteraction' : IDL.Func(
       [IDL.Text, IDL.Text],
       [IDL.Opt(DrugInteraction)],
@@ -421,10 +438,19 @@ export const idlService = IDL.Service({
       [IDL.Vec(AdverseDrugReaction)],
       ['query'],
     ),
+  'getAllDrugDatabaseStoreDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+  'getAllDrugTableStoreDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getAllDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+  'getAllDrugsFromDatabase' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getAllDrugsFromStore' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getAllPatients' : IDL.Func([], [IDL.Vec(Patient)], ['query']),
   'getApprovedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+  'getAuthoritativeDrugDatabase' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+  'getAuthoritativeDrugDatabaseByStatus' : IDL.Func(
+      [DrugStatus],
+      [IDL.Vec(Drug)],
+      ['query'],
+    ),
   'getBannedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -435,9 +461,33 @@ export const idlService = IDL.Service({
     ),
   'getCategorizedDrugs' : IDL.Func([], [CategorizedDrugs], ['query']),
   'getChatMessages' : IDL.Func([], [IDL.Vec(ChatMessage)], ['query']),
+  'getDrugDatabaseStoreByStatus' : IDL.Func(
+      [DrugStatus],
+      [IDL.Vec(Drug)],
+      ['query'],
+    ),
   'getDrugSafetyAdvisory' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
       [DrugSafetyAdvisory],
+      ['query'],
+    ),
+  'getDrugTableLastRefreshTimestamp' : IDL.Func([], [IDL.Opt(Time)], ['query']),
+  'getDrugTableStoreByStatus' : IDL.Func(
+      [DrugStatus],
+      [IDL.Vec(Drug)],
+      ['query'],
+    ),
+  'getDrugTableVerificationReport' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'lastVerificationTimestamp' : IDL.Opt(Time),
+          'bannedDrugs' : IDL.Nat,
+          'lastVerifiedDrugCount' : IDL.Opt(IDL.Nat),
+          'approvedDrugs' : IDL.Nat,
+          'totalDrugs' : IDL.Nat,
+        }),
+      ],
       ['query'],
     ),
   'getExternalResources' : IDL.Func([], [IDL.Vec(ExternalResource)], ['query']),
@@ -484,6 +534,7 @@ export const idlService = IDL.Service({
   'initializeAccessControl' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'refreshAndVerifyDrugTable' : IDL.Func([], [DrugVerificationResult], []),
+  'refreshAuthoritativeAggregateDatabase' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'savePrescriberDetailsForPatient' : IDL.Func(
       [IDL.Text, PrescriberDetails],
@@ -587,6 +638,13 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const BulkDrugStoreUpdateResult = IDL.Record({
+    'added' : IDL.Nat,
+    'errors' : IDL.Vec(IDL.Text),
+    'duplicates' : IDL.Nat,
+    'totalAfterStore' : IDL.Nat,
+    'skippedEmpty' : IDL.Nat,
   });
   const FourDrugInteractionInput = IDL.Record({
     'drug1' : IDL.Text,
@@ -889,6 +947,16 @@ export const idlFactory = ({ IDL }) => {
       ),
     'addRestrictedDrugCategory' : IDL.Func([RestrictedDrugCategory], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'bulkUpdateDrugDatabaseStore' : IDL.Func(
+        [IDL.Vec(Drug)],
+        [BulkDrugStoreUpdateResult],
+        [],
+      ),
+    'bulkUpdateDrugTableStore' : IDL.Func(
+        [IDL.Vec(Drug)],
+        [BulkDrugStoreUpdateResult],
+        [],
+      ),
     'checkDrugInteraction' : IDL.Func(
         [IDL.Text, IDL.Text],
         [IDL.Opt(DrugInteraction)],
@@ -909,10 +977,19 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(AdverseDrugReaction)],
         ['query'],
       ),
+    'getAllDrugDatabaseStoreDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+    'getAllDrugTableStoreDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getAllDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+    'getAllDrugsFromDatabase' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getAllDrugsFromStore' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getAllPatients' : IDL.Func([], [IDL.Vec(Patient)], ['query']),
     'getApprovedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+    'getAuthoritativeDrugDatabase' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
+    'getAuthoritativeDrugDatabaseByStatus' : IDL.Func(
+        [DrugStatus],
+        [IDL.Vec(Drug)],
+        ['query'],
+      ),
     'getBannedDrugs' : IDL.Func([], [IDL.Vec(Drug)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -923,9 +1000,37 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCategorizedDrugs' : IDL.Func([], [CategorizedDrugs], ['query']),
     'getChatMessages' : IDL.Func([], [IDL.Vec(ChatMessage)], ['query']),
+    'getDrugDatabaseStoreByStatus' : IDL.Func(
+        [DrugStatus],
+        [IDL.Vec(Drug)],
+        ['query'],
+      ),
     'getDrugSafetyAdvisory' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [DrugSafetyAdvisory],
+        ['query'],
+      ),
+    'getDrugTableLastRefreshTimestamp' : IDL.Func(
+        [],
+        [IDL.Opt(Time)],
+        ['query'],
+      ),
+    'getDrugTableStoreByStatus' : IDL.Func(
+        [DrugStatus],
+        [IDL.Vec(Drug)],
+        ['query'],
+      ),
+    'getDrugTableVerificationReport' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'lastVerificationTimestamp' : IDL.Opt(Time),
+            'bannedDrugs' : IDL.Nat,
+            'lastVerifiedDrugCount' : IDL.Opt(IDL.Nat),
+            'approvedDrugs' : IDL.Nat,
+            'totalDrugs' : IDL.Nat,
+          }),
+        ],
         ['query'],
       ),
     'getExternalResources' : IDL.Func(
@@ -976,6 +1081,7 @@ export const idlFactory = ({ IDL }) => {
     'initializeAccessControl' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'refreshAndVerifyDrugTable' : IDL.Func([], [DrugVerificationResult], []),
+    'refreshAuthoritativeAggregateDatabase' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'savePrescriberDetailsForPatient' : IDL.Func(
         [IDL.Text, PrescriberDetails],

@@ -1,16 +1,19 @@
+import Iter "mo:core/Iter";
+import List "mo:core/List";
 import Map "mo:core/Map";
+import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
-import Nat "mo:core/Nat";
-import Iter "mo:core/Iter";
-import List "mo:core/List";
 import Runtime "mo:core/Runtime";
+import Migration "migration";
 
 import MixinStorage "blob-storage/Mixin";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 
+// IMPORTANT: Always add this part after updating any data structure, variable or field or changing values
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -350,6 +353,14 @@ actor {
     verificationTimestamp : Time.Time;
   };
 
+  public type BulkDrugStoreUpdateResult = {
+    added : Nat;
+    skippedEmpty : Nat;
+    duplicates : Nat;
+    totalAfterStore : Nat;
+    errors : [Text];
+  };
+
   let patients = Map.empty<Text, Patient>();
   let labResults = Map.empty<Text, LabResults>();
   let medications = Map.empty<Text, Medication>();
@@ -361,7 +372,6 @@ actor {
   let caseNarrations = Map.empty<Text, CaseNarration>();
   let externalResources = Map.empty<Text, ExternalResource>();
   let drugInteractions = Map.empty<Text, DrugInteraction>();
-  let drugTableStore = Map.empty<Text, Drug>();
   let drugSafetyAdvisories = Map.empty<Text, DrugSafetyAdvisory>();
   let prescriberDetailsMap = Map.empty<Text, PrescriberDetails>();
 
@@ -373,6 +383,10 @@ actor {
   var isAccessControlInitialized = false;
   var lastDrugVerification : ?DrugVerificationResult = null;
   var lastDrugTableRefresh : ?Time.Time = null;
+
+  let drugTableStore = Map.empty<Text, Drug>();
+  let drugDatabaseStore = Map.empty<Text, Drug>();
+  let authoritativeDrugDatabase = Map.empty<Text, Drug>();
 
   func addPatientInternal(
     name : Text,
@@ -816,6 +830,13 @@ actor {
     drugTableStore.values().toArray();
   };
 
+  public query ({ caller }) func getAllDrugsFromDatabase() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view drugs");
+    };
+    drugDatabaseStore.values().toArray();
+  };
+
   public shared ({ caller }) func addDrug(drug : Drug) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can add drugs");
@@ -958,8 +979,8 @@ actor {
     };
 
     let allDrugs = drugTableStore.values().toArray();
-    let verifiedApprovedDrugs = getDrugsByStatus(#approved);
-    let verifiedBannedDrugs = getDrugsByStatus(#banned);
+    let verifiedApprovedDrugs = filterDrugsByStatus(#approved);
+    let verifiedBannedDrugs = filterDrugsByStatus(#banned);
 
     let verificationResult : DrugVerificationResult = {
       allDrugs;
@@ -992,18 +1013,248 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only authenticated users can view approved drugs");
     };
-    getDrugsByStatus(#approved);
+    filterDrugsByStatus(#approved);
   };
 
   public query ({ caller }) func getBannedDrugs() : async [Drug] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only authenticated users can view banned drugs");
     };
-    getDrugsByStatus(#banned);
+    filterDrugsByStatus(#banned);
   };
 
-  func getDrugsByStatus(status : DrugStatus) : [Drug] {
+  public query ({ caller }) func getDrugTableLastRefreshTimestamp() : async ?Time.Time {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view drug table refresh timestamp");
+    };
+    lastDrugTableRefresh;
+  };
+
+  public query ({ caller }) func getDrugTableVerificationReport() : async {
+    totalDrugs : Nat;
+    approvedDrugs : Nat;
+    bannedDrugs : Nat;
+    lastVerificationTimestamp : ?Time.Time;
+    lastVerifiedDrugCount : ?Nat;
+  } {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view drug table verification report");
+    };
+
+    let totalDrugs = drugTableStore.size();
+    let approvedDrugs = filterDrugsByStatus(#approved).size();
+    let bannedDrugs = filterDrugsByStatus(#banned).size();
+    let lastVerificationTimestamp = switch (lastDrugVerification) {
+      case (null) { null };
+      case (?result) { ?result.verificationTimestamp };
+    };
+    let lastVerifiedDrugCount = switch (lastDrugVerification) {
+      case (null) { null };
+      case (?result) { ?result.allDrugs.size() };
+    };
+
+    {
+      totalDrugs;
+      approvedDrugs;
+      bannedDrugs;
+      lastVerificationTimestamp;
+      lastVerifiedDrugCount;
+    };
+  };
+
+  public shared ({ caller }) func bulkUpdateDrugTableStore(drugs : [Drug]) : async BulkDrugStoreUpdateResult {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can update the drug table store");
+    };
+
+    var added = 0;
+    var skippedEmpty = 0;
+    var duplicates = 0;
+    let errors = List.empty<Text>();
+
+    drugTableStore.clear();
+
+    for (drug in drugs.values()) {
+      if (drug.name.trim(#char ' ').size() == 0) {
+        skippedEmpty += 1;
+        errors.add("Skipped entry due to empty name");
+      } else if (drugTableStore.containsKey(drug.name.trim(#char ' '))) {
+        duplicates += 1;
+        errors.add("Skipped duplicate entry: " # drug.name);
+      } else {
+        let validCategory = drug.category.trim(#char ' ');
+        let validDescription = drug.description.trim(#char ' ');
+        let validSafetyInfo = drug.safetyInfo.trim(#char ' ');
+
+        let validSource = switch (drug.source) {
+          case (#mimsIndia) { #mimsIndia };
+          case (#cdsco) { #cdsco };
+          case (#applicationData) { #applicationData };
+          case (#other(other)) { #other("Unknown Source") };
+        };
+
+        let validatedDrug : Drug = {
+          name = drug.name.trim(#char ' ');
+          status = drug.status;
+          date = Time.now();
+          category = if (validCategory.size() > 0) { validCategory } else { "Uncategorized" };
+          description = if (validDescription.size() > 0) { validDescription } else {
+            "No Description Available";
+          };
+          source = validSource;
+          safetyInfo = if (validSafetyInfo.size() > 0) { validSafetyInfo } else {
+            "No Safety Information";
+          };
+        };
+
+        drugTableStore.add(validatedDrug.name, validatedDrug);
+        added += 1;
+      };
+    };
+
+    {
+      added;
+      skippedEmpty;
+      duplicates;
+      totalAfterStore = drugTableStore.size();
+      errors = errors.toArray();
+    };
+  };
+
+  public shared ({ caller }) func bulkUpdateDrugDatabaseStore(drugs : [Drug]) : async BulkDrugStoreUpdateResult {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can update the drug store");
+    };
+
+    var added = 0;
+    var skippedEmpty = 0;
+    var duplicates = 0;
+    let errors = List.empty<Text>();
+
+    drugDatabaseStore.clear();
+
+    for (drug in drugs.values()) {
+      if (drug.name.trim(#char ' ').size() == 0) {
+        skippedEmpty += 1;
+        errors.add("Skipped entry due to empty name");
+      } else if (drugDatabaseStore.containsKey(drug.name.trim(#char ' '))) {
+        duplicates += 1;
+        errors.add("Skipped duplicate entry: " # drug.name);
+      } else {
+        let validCategory = drug.category.trim(#char ' ');
+        let validDescription = drug.description.trim(#char ' ');
+        let validSafetyInfo = drug.safetyInfo.trim(#char ' ');
+
+        let validSource = switch (drug.source) {
+          case (#mimsIndia) { #mimsIndia };
+          case (#cdsco) { #cdsco };
+          case (#applicationData) { #applicationData };
+          case (#other(other)) { #other("Unknown Source") };
+        };
+
+        let validatedDrug : Drug = {
+          name = drug.name.trim(#char ' ');
+          status = drug.status;
+          date = Time.now();
+          category = if (validCategory.size() > 0) { validCategory } else { "Uncategorized" };
+          description = if (validDescription.size() > 0) { validDescription } else {
+            "No Description Available";
+          };
+          source = validSource;
+          safetyInfo = if (validSafetyInfo.size() > 0) { validSafetyInfo } else {
+            "No Safety Information";
+          };
+        };
+
+        drugDatabaseStore.add(validatedDrug.name, validatedDrug);
+        added += 1;
+      };
+    };
+
+    {
+      added;
+      skippedEmpty;
+      duplicates;
+      totalAfterStore = drugDatabaseStore.size();
+      errors = errors.toArray();
+    };
+  };
+
+  public query ({ caller }) func getAllDrugTableStoreDrugs() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view the drug table store");
+    };
+    drugTableStore.values().toArray();
+  };
+
+  public query ({ caller }) func getAllDrugDatabaseStoreDrugs() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view the drug database store");
+    };
+    drugDatabaseStore.values().toArray();
+  };
+
+  public query ({ caller }) func getDrugTableStoreByStatus(status : DrugStatus) : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view the drug table store");
+    };
+    filterDrugTableStoreByStatus(status);
+  };
+
+  public query ({ caller }) func getDrugDatabaseStoreByStatus(status : DrugStatus) : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view the drug database store");
+    };
+    filterDrugDatabaseStoreByStatus(status);
+  };
+
+  func filterDrugTableStoreByStatus(status : DrugStatus) : [Drug] {
     let filtered = drugTableStore.toArray().filter(func(entry) { entry.1.status == status });
     filtered.map(func((name, drug)) { drug });
   };
+
+  func filterDrugDatabaseStoreByStatus(status : DrugStatus) : [Drug] {
+    let filtered = drugDatabaseStore.toArray().filter(func(entry) { entry.1.status == status });
+    filtered.map(func((name, drug)) { drug });
+  };
+
+  // New authoritative aggregator
+  public shared ({ caller }) func refreshAuthoritativeAggregateDatabase() : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can refresh authoritative database");
+    };
+
+    // Clear old entries
+    authoritativeDrugDatabase.clear();
+
+    // Add drugs from drugTableStore (curated application set)
+    for ((name, drug) in drugTableStore.entries()) {
+      authoritativeDrugDatabase.add(name, drug);
+    };
+
+    // Add drugs from drugDatabaseStore (additional source)
+    for ((name, drug) in drugDatabaseStore.entries()) {
+      if (not authoritativeDrugDatabase.containsKey(name)) {
+        authoritativeDrugDatabase.add(name, drug);
+      };
+    };
+
+    // Additional sources can be merged using the same logic as above
+  };
+
+  public query ({ caller }) func getAuthoritativeDrugDatabase() : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can access authoritative drug database");
+    };
+    authoritativeDrugDatabase.values().toArray();
+  };
+
+  public query ({ caller }) func getAuthoritativeDrugDatabaseByStatus(status : DrugStatus) : async [Drug] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can access authoritative drug database");
+    };
+    let filtered = authoritativeDrugDatabase.toArray().filter(func(entry) { entry.1.status == status });
+    filtered.map(func((name, drug)) { drug });
+  };
+
 };

@@ -34,13 +34,13 @@ export default function MonthlyBanTrendsChart({ isOpen, onClose, drugs }: Monthl
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-2 border-blue-200 dark:border-blue-700">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-2 border-stone-200 dark:border-stone-700">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+          <DialogTitle className="text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
             <TrendingDown className="h-6 w-6 text-red-600" />
             Monthly Ban Trends
           </DialogTitle>
-          <DialogDescription className="text-blue-700 dark:text-blue-300">
+          <DialogDescription className="text-stone-700 dark:text-stone-300">
             Statistical analysis of drug bans per year for academic research
           </DialogDescription>
         </DialogHeader>
@@ -59,12 +59,12 @@ export default function MonthlyBanTrendsChart({ isOpen, onClose, drugs }: Monthl
               </CardContent>
             </Card>
 
-            <Card className="bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-700">
+            <Card className="bg-stone-50 dark:bg-stone-950/30 border-2 border-stone-200 dark:border-stone-700">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Years Tracked</CardTitle>
+                <CardTitle className="text-sm font-medium text-stone-700 dark:text-stone-300">Years Tracked</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+                <p className="text-3xl font-bold text-stone-900 dark:text-stone-100">
                   {banTrends.length}
                 </p>
               </CardContent>
@@ -83,12 +83,12 @@ export default function MonthlyBanTrendsChart({ isOpen, onClose, drugs }: Monthl
           </div>
 
           {/* Bar Chart */}
-          <Card className="bg-white dark:bg-slate-800 border-2 border-blue-200 dark:border-blue-700">
+          <Card className="bg-white dark:bg-slate-800 border-2 border-stone-200 dark:border-stone-700">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+              <CardTitle className="text-lg font-semibold text-stone-900 dark:text-stone-100">
                 Yearly Ban Statistics
               </CardTitle>
-              <CardDescription className="text-blue-700 dark:text-blue-300">
+              <CardDescription className="text-stone-700 dark:text-stone-300">
                 Number of drugs banned per year
               </CardDescription>
             </CardHeader>
@@ -98,8 +98,8 @@ export default function MonthlyBanTrendsChart({ isOpen, onClose, drugs }: Monthl
                   <div key={trend.year} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold text-blue-900 dark:text-blue-100">
+                        <Calendar className="h-4 w-4 text-stone-600 dark:text-stone-400" />
+                        <span className="font-semibold text-stone-900 dark:text-stone-100">
                           {trend.year}
                         </span>
                       </div>
@@ -107,7 +107,7 @@ export default function MonthlyBanTrendsChart({ isOpen, onClose, drugs }: Monthl
                         {trend.bans} ban{trend.bans !== 1 ? 's' : ''}
                       </span>
                     </div>
-                    <div className="relative h-8 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div className="relative h-8 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
                         style={{ width: `${(trend.bans / maxBans) * 100}%` }}
@@ -123,16 +123,16 @@ export default function MonthlyBanTrendsChart({ isOpen, onClose, drugs }: Monthl
 
               {banTrends.length === 0 && (
                 <div className="py-12 text-center">
-                  <TrendingDown className="h-12 w-12 text-gray-400 mx-auto mb-4 opacity-50" />
-                  <p className="text-gray-600 dark:text-gray-400">No ban data available</p>
+                  <TrendingDown className="h-12 w-12 text-stone-400 mx-auto mb-4 opacity-50" />
+                  <p className="text-stone-600 dark:text-stone-400">No ban data available</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Academic Note */}
-          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-            <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+          <div className="bg-stone-50 dark:bg-stone-950/30 rounded-lg p-4 border border-stone-200 dark:border-stone-700">
+            <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
               <strong>Academic Research Note:</strong> This statistical analysis is based on official CDSCO data 
               and regulatory databases. The trends shown represent documented drug bans and regulatory actions. 
               Data is updated daily at 2 AM IST for accuracy and research reliability.

@@ -1,27 +1,64 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Align Drug Database UI with backend drug lists and refresh/verification results",
+  "title": "Drug Database UI: authoritative dataset alignment, header text, and academic neutral theme",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Update Drug Database UI to use backend-provided Approved/Banned/All lists consistently; ensure Refresh & Verify refreshes data and shows a clear verification banner; keep counters, search/filter/pagination, and CSV export operating on the currently filtered dataset without runtime errors.",
+      "id": "REQ-2",
+      "summary": "Ensure the Drug Database UI reflects the expanded authoritative dataset (550+) and stays in sync after Refresh & Verify.",
       "acceptanceCriteria": [
-        "In the Drug Database module, the Approved tab shows only approved drugs from the backend and the Banned tab shows only banned drugs from the backend.",
-        "After clicking “Refresh & Verify”, the table data refreshes and the verification banner displays a clear pass/fail summary based on the refreshed data.",
-        "The counters (Total, Approved, Banned) match the current backend dataset returned by `getAllDrugs()` and update after refresh.",
-        "Search, category filtering, pagination, and CSV export operate on the filtered dataset without runtime errors when fields are missing or empty."
+        "The dataset used to seed the backend contains more than 550 total approved+banned entries spanning multiple categories (e.g., antibiotics, painkillers, FDCs, vitamins, other).",
+        "The Drug Database UI counts (total/approved/banned) match the backend authoritative dataset after seeding and after Refresh & Verify."
       ],
       "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the drug database React Query hooks are wired so the UI can reliably use backend lists for All/Approved/Banned; update the Refresh & Verify mutation to invalidate and refetch drug-list queries (all/approved/banned) and the last verification query after a successful refresh so counters, tabs, and banners update immediately."
+          "description": "Tighten React Query configuration for authoritative drug queries (useGetAllDrugs/useGetApprovedDrugs/useGetBannedDrugs/useGetCategorizedDrugs) to reliably refetch on mount and avoid stale counts after refresh; ensure Refresh & Verify mutation continues to invalidate all relevant drug query keys used by the Drug Database UI."
         },
         {
           "path": "frontend/src/components/DrugTableModule.tsx",
           "operation": "modify",
-          "description": "Align tab behavior with backend lists by using `useGetAllDrugs`, `useGetApprovedDrugs`, and `useGetBannedDrugs` as the authoritative sources for each tab (rather than filtering only from the all list). Ensure counters derive from `getAllDrugs()` results. Update Refresh & Verify flow to refresh the table by triggering query invalidations and to render a clear pass/fail verification banner computed from the latest backend `DrugVerificationResult` (and keep existing defensive handling for missing/empty fields across search, category filtering, pagination, and CSV export)."
+          "description": "Add a small, prominent authoritative-dataset status line in the Drug Database header area that surfaces backend-derived totals (total/approved/banned) and highlights when totals are unexpectedly low (<550) so mismatches are visible immediately after seeding and after Refresh & Verify."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Update the Drug Database module header to the required academic title string.",
+      "acceptanceCriteria": [
+        "The specified header text is visible at the top of the Drug Database module on both desktop and mobile widths."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Replace the current Drug Database module title with the exact required header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” and ensure it is presented prominently and responsively within the module header."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Apply a consistent professional academic neutral theme across the Drug Database module (cards, tables, badges, buttons, banners) without introducing blue/purple as dominant primary styling.",
+      "acceptanceCriteria": [
+        "Drug Database module styling appears consistent across tabs (All/Approved/Banned) and in dark/light themes.",
+        "No new primary brand reliance on blue/purple gradients is introduced as the dominant style in this module (existing elements may be adjusted to match the new theme)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Refactor module-level styling to a neutral academic palette (stone/emerald/amber/red) by updating Card, header, table header, badges (status/category/source), buttons, and banners to remove dominant blue/purple gradients and ensure consistent typography hierarchy across tabs."
+        },
+        {
+          "path": "frontend/src/components/MonthlyBanTrendsChart.tsx",
+          "operation": "modify",
+          "description": "Align the Ban Trends dialog styling with the same neutral academic theme (backgrounds, borders, headings, and summary cards) so it visually matches the Drug Database module in both light/dark modes without relying on blue/purple as the primary accent."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "If needed to support consistent module styling, adjust or add minimal theme tokens/utility conventions (using existing Tailwind + CSS variable approach) to reinforce neutral academic colors and typography hierarchy without introducing new global stylesheet entry points."
         }
       ]
     }

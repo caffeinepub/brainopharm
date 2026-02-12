@@ -1,90 +1,119 @@
 {
   "kind": "build_request",
-  "title": "Fix drug database list to include approved and banned drugs and verify correctness",
+  "title": "Automatically preload and refresh the authoritative drug database (500+ entries)",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update the backend drug table source so that the drug database returns a complete, working list that includes both approved drugs and banned drugs (with correct status values) when the frontend calls `getAllDrugs`, `getApprovedDrugs`, and `getBannedDrugs`.",
+      "text": "Implement automatic population of the backend authoritative drug database so that on first run (and after upgrade, if the store is empty) the canister contains 500+ drug entries without requiring a manual import.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-5",
-          "msg-9"
+          "recent-11"
         ],
         "quotes": [
-          "In drug database i need everything working correctly. please add the drugs that are approved and banned to the list, please",
-          "yes do it"
+          "ADD DRUGS AUTOMATICALLY"
         ]
       },
       "acceptanceCriteria": [
-        "Calling `getAllDrugs()` returns a non-empty list of `Drug` records.",
-        "Calling `getApprovedDrugs()` returns only drugs where `status` is `#approved` and the list is non-empty.",
-        "Calling `getBannedDrugs()` returns only drugs where `status` is `#banned` and the list is non-empty.",
-        "Each returned `Drug` has non-empty `name`, `category`, `description`, and `safetyInfo`, and has a valid `source` variant.",
-        "No traps occur for authenticated users when fetching drug lists."
+        "Calling the existing frontend query hooks (useGetAllDrugs/useGetApprovedDrugs/useGetBannedDrugs) returns non-empty results on a fresh deployment without any manual admin action.",
+        "On a fresh deployment, actor.getAllDrugs() returns at least 500 drugs.",
+        "The auto-population logic does not overwrite existing drug keys if the database is already populated."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Ensure the backend `refreshAndVerifyDrugTable` flow reliably refreshes the stored drug list used by `getAllDrugs()` and persists a `DrugVerificationResult` that the frontend can fetch via `getLastDrugVerification()`.",
-      "target": "backend",
+      "text": "Ensure the expanded canonical drug dataset (550+ entries across categories) is what populates the authoritative drug list shown in the Drug Database UI, matching the existing project goal of an expanded dataset.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-5",
-          "msg-9"
+          "recent-11"
         ],
         "quotes": [
-          "In drug database i need everything working correctly. please add the drugs that are approved and banned to the list, please",
-          "yes do it"
+          "ADD DRUGS AUTOMATICALLY"
         ]
       },
       "acceptanceCriteria": [
-        "`refreshAndVerifyDrugTable()` returns a `DrugVerificationResult` containing `allDrugs`, `verifiedApprovedDrugs`, `verifiedBannedDrugs`, and `verificationTimestamp`.",
-        "After `refreshAndVerifyDrugTable()` succeeds, subsequent calls to `getAllDrugs()` reflect the refreshed dataset.",
-        "`getLastDrugVerification()` returns the latest verification result after a refresh and returns `null` (or equivalent) before any refresh has been performed."
+        "The dataset used to seed the backend contains more than 550 total approved+banned entries spanning multiple categories (e.g., antibiotics, painkillers, FDCs, vitamins, other).",
+        "The Drug Database UI counts (total/approved/banned) match the backend authoritative dataset after seeding and after Refresh & Verify."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Align the Drug Database UI behavior with the backend lists so users can reliably view and filter the complete drug dataset by Approved/Banned/All without missing entries, and the Refresh & Verify button updates the table and shows the verification banner based on the latest backend result.",
-      "target": "frontend",
+      "text": "Make the existing “Refresh & Verify” workflow reliable by ensuring backend methods required by the frontend hooks exist and return consistent data: getAllDrugs, getApprovedDrugs, getBannedDrugs, getCategorizedDrugs, refreshAndVerifyDrugTable, getLastDrugVerification, getDrugTableVerificationReport, and getDrugTableLastRefreshTimestamp.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-5",
-          "msg-9"
+          "recent-17"
         ],
         "quotes": [
-          "In drug database i need everything working correctly. please add the drugs that are approved and banned to the list, please",
-          "yes do it"
+          "YES"
         ]
       },
       "acceptanceCriteria": [
-        "In the Drug Database module, the Approved tab shows only approved drugs from the backend and the Banned tab shows only banned drugs from the backend.",
-        "After clicking “Refresh & Verify”, the table data refreshes and the verification banner displays a clear pass/fail summary based on the refreshed data.",
-        "The counters (Total, Approved, Banned) match the current backend dataset returned by `getAllDrugs()` and update after refresh.",
-        "Search, category filtering, pagination, and CSV export operate on the filtered dataset without runtime errors when fields are missing or empty."
+        "The Drug Database UI loads without runtime errors related to missing canister methods.",
+        "Clicking “Refresh & Verify” in the Drug Database UI completes successfully and updates the ‘Last backend refresh’ timestamp.",
+        "After Refresh & Verify completes, React Query invalidations result in updated lists being rendered (no stale counts)."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add/adjust the Drug Database UI header text to match the project requirement: display the header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” prominently in the drug table module.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "project_state"
+        ],
+        "quotes": [
+          "Responsive professional UI for academic use with filters (Status, Year, Category), drug/ingredient search, sortable columns, and header text \"Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated\""
+        ]
+      },
+      "acceptanceCriteria": [
+        "The specified header text is visible at the top of the Drug Database module on both desktop and mobile widths."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Apply a coherent, professional academic visual theme across the Drug Database module (cards, table header, badges, buttons, and banners) using a consistent neutral palette (avoid introducing blue/purple as primary brand colors unless already required) and consistent typography hierarchy.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "recent-17"
+        ],
+        "quotes": [
+          "YES"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Drug Database module styling appears consistent across tabs (All/Approved/Banned) and in dark/light themes.",
+        "No new primary brand reliance on blue/purple gradients is introduced as the dominant style in this module (existing elements may be adjusted to match the new theme)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
-    "Do not modify any files under `frontend/src/components/ui` or the immutable hook/bootstrap files listed in `SYSTEM_CONTEXT.frontend.immutablePaths`.",
-    "Use English for any user-facing text."
+    "Backend must remain a single Motoko actor in backend/main.mo; do not introduce additional backend services.",
+    "Only create/modify backend/migration.mo if needed for upgrading existing stable state; follow the existing conditional migration policy.",
+    "Do not edit files under frontend/src/components/ui or any frontend immutablePaths listed in SYSTEM_CONTEXT; compose components instead.",
+    "Use English for all user-facing text."
   ],
   "nonGoals": [
-    "Implementing real external API scraping/parsing for CDSCO/MIMS/Gazette sources (client-side simulated services may remain as-is).",
-    "Adding new authentication providers beyond Internet Identity.",
-    "Adding new drug interaction features beyond ensuring the drug list itself is correct and complete."
+    "Implementing real-time updates (WebSockets/push notifications).",
+    "Integrating third-party authentication providers beyond Internet Identity.",
+    "Deploying to external cloud providers or using external databases.",
+    "Guaranteeing live scraping/parsing of CDSCO PDFs or websites beyond the scope of a deterministic built-in seed + manual/admin import (unless explicitly requested later with exact URLs and parsing rules)."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
   },
   "userProfileUpdate": {
-    "goalsToAdd": [],
+    "goalsToAdd": [
+      "Automatically seed the authoritative drug database with 500+ (ideally 550+) entries so the app works immediately without manual import."
+    ],
     "goalsToRemove": [],
-    "preferencesToAdd": [],
+    "preferencesToAdd": [
+      "Use English for user-facing UI text."
+    ],
     "preferencesToRemove": [],
     "miscToAdd": [],
     "miscToRemove": [],

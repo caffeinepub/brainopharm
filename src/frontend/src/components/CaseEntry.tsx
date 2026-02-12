@@ -3,12 +3,14 @@ import { useGetPatient } from '../hooks/useQueries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { ScrollArea } from './ui/scroll-area';
 import LabResultsForm from './LabResultsForm';
 import MedicationForm from './MedicationForm';
 import AdrForm from './AdrForm';
 import CaseSummary from './CaseSummary';
 import PrescriberDetailsSection from './PrescriberDetailsSection';
-import { Activity, Pill, AlertTriangle, FileText, UserCog } from 'lucide-react';
+import CaseNarrationSection from './CaseNarrationSection';
+import { Activity, Pill, AlertTriangle, FileText, UserCog, Sparkles } from 'lucide-react';
 
 interface CaseEntryProps {
   patientId: string;
@@ -76,28 +78,34 @@ export default function CaseEntry({ patientId }: CaseEntryProps) {
       </Card>
 
       <Tabs defaultValue="lab" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="lab" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Lab Results
-          </TabsTrigger>
-          <TabsTrigger value="medications" className="gap-2">
-            <Pill className="h-4 w-4" />
-            Medications
-          </TabsTrigger>
-          <TabsTrigger value="adr" className="gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            ADR
-          </TabsTrigger>
-          <TabsTrigger value="prescriber" className="gap-2">
-            <UserCog className="h-4 w-4" />
-            Prescriber
-          </TabsTrigger>
-          <TabsTrigger value="summary" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Summary
-          </TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex h-auto w-full min-w-max">
+            <TabsTrigger value="lab" className="gap-2 whitespace-nowrap">
+              <Activity className="h-4 w-4" />
+              Lab Results
+            </TabsTrigger>
+            <TabsTrigger value="medications" className="gap-2 whitespace-nowrap">
+              <Pill className="h-4 w-4" />
+              Medications
+            </TabsTrigger>
+            <TabsTrigger value="adr" className="gap-2 whitespace-nowrap">
+              <AlertTriangle className="h-4 w-4" />
+              ADR
+            </TabsTrigger>
+            <TabsTrigger value="prescriber" className="gap-2 whitespace-nowrap">
+              <UserCog className="h-4 w-4" />
+              Prescriber
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4" />
+              Summary
+            </TabsTrigger>
+            <TabsTrigger value="narration" className="gap-2 whitespace-nowrap">
+              <Sparkles className="h-4 w-4" />
+              Narration Creation
+            </TabsTrigger>
+          </TabsList>
+        </ScrollArea>
 
         <TabsContent value="lab">
           <LabResultsForm patientId={patientId} />
@@ -117,6 +125,10 @@ export default function CaseEntry({ patientId }: CaseEntryProps) {
 
         <TabsContent value="summary">
           <CaseSummary patientId={patientId} />
+        </TabsContent>
+
+        <TabsContent value="narration">
+          <CaseNarrationSection patientId={patientId} />
         </TabsContent>
       </Tabs>
     </div>

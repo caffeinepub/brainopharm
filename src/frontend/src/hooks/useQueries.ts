@@ -19,6 +19,7 @@ import {
   DrugSafetyAdvisory,
   PrescriberDetails,
   DrugVerificationResult,
+  BulkDrugStoreUpdateResult,
 } from '../backend';
 import { MultiSourceDrugService } from '../services/multiSourceDrugService';
 import { drugDrugInteractionService } from '../services/drugDrugInteractionService';
@@ -107,18 +108,20 @@ export function useDeletePatient() {
 // Lab Results queries
 export function useGetAllLabResults() {
   const { actor, isFetching } = useActor();
-  const { data: patients = [] } = useGetAllPatients();
 
   return useQuery<LabResults[]>({
     queryKey: ['labResults'],
     queryFn: async () => {
-      if (!actor || patients.length === 0) return [];
-      const results = await Promise.all(
-        patients.map((p) => actor.getLabResultsByPatient(p.patientId))
-      );
-      return results.flat();
+      if (!actor) return [];
+      const patients = await actor.getAllPatients();
+      const allLabResults: LabResults[] = [];
+      for (const patient of patients) {
+        const results = await actor.getLabResultsByPatient(patient.patientId);
+        allLabResults.push(...results);
+      }
+      return allLabResults;
     },
-    enabled: !!actor && !isFetching && patients.length > 0,
+    enabled: !!actor && !isFetching,
   });
 }
 
@@ -127,7 +130,7 @@ export function useAddLabResults() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: async (labResults: {
       patientId: string;
       uricAcid: number | null;
       creatinine: number | null;
@@ -136,11 +139,11 @@ export function useAddLabResults() {
     }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addLabResults(
-        data.patientId,
-        data.uricAcid,
-        data.creatinine,
-        data.bloodPressureSystolic,
-        data.bloodPressureDiastolic
+        labResults.patientId,
+        labResults.uricAcid,
+        labResults.creatinine,
+        labResults.bloodPressureSystolic,
+        labResults.bloodPressureDiastolic
       );
     },
     onSuccess: () => {
@@ -152,18 +155,20 @@ export function useAddLabResults() {
 // Medication queries
 export function useGetAllMedications() {
   const { actor, isFetching } = useActor();
-  const { data: patients = [] } = useGetAllPatients();
 
   return useQuery<Medication[]>({
     queryKey: ['medications'],
     queryFn: async () => {
-      if (!actor || patients.length === 0) return [];
-      const results = await Promise.all(
-        patients.map((p) => actor.getMedicationsByPatient(p.patientId))
-      );
-      return results.flat();
+      if (!actor) return [];
+      const patients = await actor.getAllPatients();
+      const allMedications: Medication[] = [];
+      for (const patient of patients) {
+        const meds = await actor.getMedicationsByPatient(patient.patientId);
+        allMedications.push(...meds);
+      }
+      return allMedications;
     },
-    enabled: !!actor && !isFetching && patients.length > 0,
+    enabled: !!actor && !isFetching,
   });
 }
 
@@ -172,7 +177,7 @@ export function useAddMedication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: async (medication: {
       patientId: string;
       name: string;
       dosage: string | null;
@@ -182,12 +187,12 @@ export function useAddMedication() {
     }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addMedication(
-        data.patientId,
-        data.name,
-        data.dosage,
-        data.frequency,
-        data.startDate,
-        data.endDate
+        medication.patientId,
+        medication.name,
+        medication.dosage,
+        medication.frequency,
+        medication.startDate,
+        medication.endDate
       );
     },
     onSuccess: () => {
@@ -199,18 +204,20 @@ export function useAddMedication() {
 // ADR queries
 export function useGetAllAdrs() {
   const { actor, isFetching } = useActor();
-  const { data: patients = [] } = useGetAllPatients();
 
   return useQuery<AdverseDrugReaction[]>({
     queryKey: ['adrs'],
     queryFn: async () => {
-      if (!actor || patients.length === 0) return [];
-      const results = await Promise.all(
-        patients.map((p) => actor.getADRsByPatient(p.patientId))
-      );
-      return results.flat();
+      if (!actor) return [];
+      const patients = await actor.getAllPatients();
+      const allAdrs: AdverseDrugReaction[] = [];
+      for (const patient of patients) {
+        const adrs = await actor.getADRsByPatient(patient.patientId);
+        allAdrs.push(...adrs);
+      }
+      return allAdrs;
     },
-    enabled: !!actor && !isFetching && patients.length > 0,
+    enabled: !!actor && !isFetching,
   });
 }
 
@@ -219,7 +226,7 @@ export function useAddAdr() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: async (adr: {
       patientId: string;
       description: string;
       severity: string;
@@ -228,11 +235,11 @@ export function useAddAdr() {
     }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addADR(
-        data.patientId,
-        data.description,
-        data.severity,
-        data.suspectedDrug,
-        data.onsetDate
+        adr.patientId,
+        adr.description,
+        adr.severity,
+        adr.suspectedDrug,
+        adr.onsetDate
       );
     },
     onSuccess: () => {
@@ -241,7 +248,7 @@ export function useAddAdr() {
   });
 }
 
-// User Profile queries with separated actor and profile fetch states
+// User Profile queries
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
@@ -255,20 +262,12 @@ export function useGetCallerUserProfile() {
     retry: false,
   });
 
-  // Separate states for better control
-  const actorReady = !!actor && !actorFetching;
-  const profileFetching = query.isFetching && actorReady;
-
   return {
     ...query,
-    // Actor is still initializing
     isLoading: actorFetching || query.isLoading,
-    // Profile query has completed at least once
-    isFetched: actorReady && query.isFetched,
-    // Actor is ready and initialized
-    actorReady,
-    // Profile query is actively fetching (not just waiting for actor)
-    profileFetching,
+    isFetched: !!actor && query.isFetched,
+    actorReady: !!actor && !actorFetching,
+    profileFetching: query.isLoading && !actorFetching,
   };
 }
 
@@ -306,9 +305,9 @@ export function useAddChatMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { sender: string; message: string }) => {
+    mutationFn: async (message: { sender: string; message: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addChatMessage(data.sender, data.message);
+      return actor.addChatMessage(message.sender, message.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
@@ -330,7 +329,7 @@ export function useGetRestrictedDrugCategories() {
   });
 }
 
-// Prescription Image queries
+// Prescription Images queries
 export function useGetPrescriptionImages(patientId: string) {
   const { actor, isFetching } = useActor();
 
@@ -349,14 +348,12 @@ export function useAddPrescriptionImage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { patientId: string; imageUrl: string }) => {
+    mutationFn: async (image: { patientId: string; imageUrl: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addPrescriptionImage(data.patientId, data.imageUrl);
+      return actor.addPrescriptionImage(image.patientId, image.imageUrl);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['prescriptionImages', variables.patientId],
-      });
+      queryClient.invalidateQueries({ queryKey: ['prescriptionImages', variables.patientId] });
     },
   });
 }
@@ -380,14 +377,12 @@ export function useAddCaseNarration() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { patientId: string; content: string }) => {
+    mutationFn: async (narration: { patientId: string; content: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addCaseNarration(data.patientId, data.content);
+      return actor.addCaseNarration(narration.patientId, narration.content);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['caseNarrations', variables.patientId],
-      });
+      queryClient.invalidateQueries({ queryKey: ['caseNarrations', variables.patientId] });
     },
   });
 }
@@ -411,9 +406,9 @@ export function useCheckDrugInteraction() {
   const { actor } = useActor();
 
   return useMutation({
-    mutationFn: async (data: { drug1: string; drug2: string }) => {
+    mutationFn: async (drugs: { drug1: string; drug2: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.checkDrugInteraction(data.drug1, data.drug2);
+      return actor.checkDrugInteraction(drugs.drug1, drugs.drug2);
     },
   });
 }
@@ -429,47 +424,9 @@ export function useCheckFourDrugInteraction() {
   });
 }
 
-// Client-side interaction check hooks using React Query - RETURNS ARRAYS
-export function useCheckMultiDrugInteraction(drugs?: string[]) {
-  const queryKey = drugs ? normalizeInputsForQueryKey(drugs) : 'empty';
-
-  return useQuery<DrugDrugInteractionResult[]>({
-    queryKey: ['drugInteractions', queryKey],
-    queryFn: () => computeMultiDrugInteractions(drugs || []),
-    enabled: !!drugs && drugs.length >= 2,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
-export function useCheckDrugFoodInteraction(drugs?: string[], foods?: string[]) {
-  const queryKey = {
-    drugs: drugs ? normalizeInputsForQueryKey(drugs) : 'empty',
-    foods: foods ? normalizeInputsForQueryKey(foods) : 'empty',
-  };
-
-  return useQuery<DrugFoodInteractionResult[]>({
-    queryKey: ['drugFoodInteractions', queryKey],
-    queryFn: () => computeDrugFoodInteractions(drugs || [], foods || []),
-    enabled: !!drugs && drugs.length > 0 && !!foods && foods.length > 0,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
-export function useCheckFoodFoodInteraction(foods?: string[]) {
-  const queryKey = foods ? normalizeInputsForQueryKey(foods) : 'empty';
-
-  return useQuery<FoodFoodInteractionResult[]>({
-    queryKey: ['foodFoodInteractions', queryKey],
-    queryFn: () => computeFoodFoodInteractions(foods || []),
-    enabled: !!foods && foods.length >= 2,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
-// Drug Database queries - INDEPENDENT OF PROFILE LOADING
-// These queries only depend on actor availability, not on isFetching state
+// Drug Database queries with refetchOnMount for authoritative data
 export function useGetAllDrugs() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   return useQuery<Drug[]>({
     queryKey: ['allDrugs'],
@@ -477,14 +434,14 @@ export function useGetAllDrugs() {
       if (!actor) return [];
       return actor.getAllDrugs();
     },
-    // Only require actor to exist, don't wait for isFetching
-    enabled: !!actor,
-    staleTime: 1000 * 60 * 15,
+    enabled: !!actor && !isFetching,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
 export function useGetApprovedDrugs() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   return useQuery<Drug[]>({
     queryKey: ['approvedDrugs'],
@@ -492,14 +449,14 @@ export function useGetApprovedDrugs() {
       if (!actor) return [];
       return actor.getApprovedDrugs();
     },
-    // Only require actor to exist, don't wait for isFetching
-    enabled: !!actor,
-    staleTime: 1000 * 60 * 15,
+    enabled: !!actor && !isFetching,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
 export function useGetBannedDrugs() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   return useQuery<Drug[]>({
     queryKey: ['bannedDrugs'],
@@ -507,147 +464,52 @@ export function useGetBannedDrugs() {
       if (!actor) return [];
       return actor.getBannedDrugs();
     },
-    // Only require actor to exist, don't wait for isFetching
-    enabled: !!actor,
-    staleTime: 1000 * 60 * 15,
+    enabled: !!actor && !isFetching,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
 export function useGetCategorizedDrugs() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   return useQuery<CategorizedDrugs>({
     queryKey: ['categorizedDrugs'],
     queryFn: async () => {
-      if (!actor) {
+      if (!actor)
         return {
-          all: [],
           antibiotics: [],
           painkillers: [],
           fdcs: [],
           vitamins: [],
           others: [],
+          all: [],
         };
-      }
       return actor.getCategorizedDrugs();
     },
-    // Only require actor to exist, don't wait for isFetching
-    enabled: !!actor,
-    staleTime: 1000 * 60 * 15,
+    enabled: !!actor && !isFetching,
   });
 }
 
-export function useSearchDrugs(searchQuery: string) {
+export function useSearchDrugs() {
   const { actor } = useActor();
-
-  return useQuery<Drug[]>({
-    queryKey: ['searchDrugs', searchQuery],
-    queryFn: async () => {
-      if (!actor || !searchQuery) return [];
-      return actor.searchDrugs(searchQuery);
-    },
-    // Only require actor to exist, don't wait for isFetching
-    enabled: !!actor && !!searchQuery,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
-// Multi-source drug service queries - CLIENT-SIDE ONLY
-export function useGetMultiSourceDrugs() {
-  return useQuery<Drug[]>({
-    queryKey: ['multiSourceDrugs'],
-    queryFn: async () => {
-      return MultiSourceDrugService.getCachedData();
-    },
-    staleTime: 1000 * 60 * 60,
-  });
-}
-
-export function useGetMultiSourceLastUpdated() {
-  return useQuery<Date | null>({
-    queryKey: ['multiSourceLastUpdated'],
-    queryFn: async () => {
-      return MultiSourceDrugService.getLastUpdated();
-    },
-    staleTime: 1000 * 60,
-  });
-}
-
-export function useGetMultiSourceSyncStatus() {
-  return useQuery<{
-    cdsco: { status: string; lastSync: Date | null } | null;
-    mims: { status: string; lastSync: Date | null } | null;
-  }>({
-    queryKey: ['multiSourceSyncStatus'],
-    queryFn: async () => {
-      return {
-        cdsco: { status: 'idle', lastSync: MultiSourceDrugService.getLastUpdated() },
-        mims: { status: 'idle', lastSync: MultiSourceDrugService.getLastUpdated() },
-      };
-    },
-    staleTime: 1000 * 60,
-  });
-}
-
-export function useRefreshMultiSourceData() {
-  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      await MultiSourceDrugService.refresh();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['multiSourceDrugs'] });
-      queryClient.invalidateQueries({ queryKey: ['multiSourceLastUpdated'] });
-      queryClient.invalidateQueries({ queryKey: ['multiSourceSyncStatus'] });
+    mutationFn: async (searchQuery: string) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.searchDrugs(searchQuery);
     },
   });
 }
 
-// Drug-Drug Interaction Database queries - CLIENT-SIDE ONLY
-export function useGetDrugDrugInteractionData() {
-  return useQuery({
-    queryKey: ['drugDrugInteractionDatabase'],
-    queryFn: async () => {
-      return drugDrugInteractionService.getCachedData();
-    },
-    staleTime: 1000 * 60 * 60,
-  });
-}
-
-// Drug Safety Advisory queries
-export function useGetDrugSafetyAdvisory(
-  drug1: string,
-  drug2: string,
-  drug3: string,
-  drug4: string
-) {
+export function useGetDrugSafetyAdvisory() {
   const { actor } = useActor();
 
-  return useQuery<DrugSafetyAdvisory>({
-    queryKey: ['drugSafetyAdvisory', drug1, drug2, drug3, drug4],
-    queryFn: async () => {
-      if (!actor) {
-        return {
-          pairwiseInteractions: [],
-          overallRisk: {
-            highestSeverityPair: undefined,
-            highestRiskLevel: undefined,
-            topRecommendation: undefined,
-            overallSeverity: undefined,
-          },
-          specialPopulations: {
-            pregnancy: undefined,
-            lactation: undefined,
-            pediatrics: undefined,
-            geriatrics: undefined,
-          },
-        };
-      }
-      return actor.getDrugSafetyAdvisory(drug1, drug2, drug3, drug4);
+  return useMutation({
+    mutationFn: async (drugs: { drug1: string; drug2: string; drug3: string; drug4: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getDrugSafetyAdvisory(drugs.drug1, drugs.drug2, drugs.drug3, drugs.drug4);
     },
-    enabled: !!actor && !!drug1 && !!drug2 && !!drug3 && !!drug4,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -675,9 +537,7 @@ export function useSavePrescriberDetails() {
       return actor.savePrescriberDetailsForPatient(data.patientId, data.prescriberDetails);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['prescriberDetails', variables.patientId],
-      });
+      queryClient.invalidateQueries({ queryKey: ['prescriberDetails', variables.patientId] });
     },
   });
 }
@@ -693,18 +553,19 @@ export function useRefreshAndVerifyDrugTable() {
       return actor.refreshAndVerifyDrugTable();
     },
     onSuccess: () => {
-      // Invalidate all drug-related queries to trigger immediate refetch
       queryClient.invalidateQueries({ queryKey: ['allDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['approvedDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['bannedDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['categorizedDrugs'] });
       queryClient.invalidateQueries({ queryKey: ['lastDrugVerification'] });
+      queryClient.invalidateQueries({ queryKey: ['drugTableVerificationReport'] });
+      queryClient.invalidateQueries({ queryKey: ['drugTableLastRefreshTimestamp'] });
     },
   });
 }
 
 export function useGetLastDrugVerification() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   return useQuery<DrugVerificationResult | null>({
     queryKey: ['lastDrugVerification'],
@@ -712,7 +573,148 @@ export function useGetLastDrugVerification() {
       if (!actor) return null;
       return actor.getLastDrugVerification();
     },
-    enabled: !!actor,
-    staleTime: 1000 * 60 * 5,
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Admin queries
+export function useIsCallerAdmin() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<boolean>({
+    queryKey: ['isCallerAdmin'],
+    queryFn: async () => {
+      if (!actor) return false;
+      try {
+        return await actor.isCallerAdmin();
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        return false;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    retry: false,
+  });
+}
+
+export function useBulkUpdateDrugTableStore() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation<BulkDrugStoreUpdateResult, Error, Drug[]>({
+    mutationFn: async (drugs: Drug[]) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.bulkUpdateDrugTableStore(drugs);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['approvedDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['bannedDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['categorizedDrugs'] });
+      queryClient.invalidateQueries({ queryKey: ['drugTableVerificationReport'] });
+      queryClient.invalidateQueries({ queryKey: ['drugTableLastRefreshTimestamp'] });
+    },
+  });
+}
+
+export function useGetDrugTableVerificationReport() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery({
+    queryKey: ['drugTableVerificationReport'],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getDrugTableVerificationReport();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetDrugTableLastRefreshTimestamp() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<bigint | null>({
+    queryKey: ['drugTableLastRefreshTimestamp'],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getDrugTableLastRefreshTimestamp();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Multi-source drug service queries (client-side)
+export function useGetMultiSourceLastUpdated() {
+  return useQuery({
+    queryKey: ['multiSourceLastUpdated'],
+    queryFn: async () => {
+      return MultiSourceDrugService.getLastUpdated();
+    },
+    staleTime: 60000,
+  });
+}
+
+export function useGetMultiSourceSyncStatus() {
+  return useQuery({
+    queryKey: ['multiSourceSyncStatus'],
+    queryFn: async () => {
+      return MultiSourceDrugService.getSyncStatus();
+    },
+    staleTime: 30000,
+  });
+}
+
+// Drug-Drug Interaction Database queries (client-side) - returns array of drugs
+export function useGetDrugDrugInteractionData() {
+  return useQuery({
+    queryKey: ['drugDrugInteractionData'],
+    queryFn: async () => {
+      return drugDrugInteractionService.getCachedData();
+    },
+    staleTime: 300000,
+  });
+}
+
+// Local interaction check queries (client-side) - fixed return types
+export function useCheckMultiDrugInteractions(drugs: string[]) {
+  const normalizedKey = normalizeInputsForQueryKey(drugs);
+
+  return useQuery({
+    queryKey: ['multiDrugInteractions', normalizedKey],
+    queryFn: async () => {
+      return computeMultiDrugInteractions(drugs);
+    },
+    enabled: drugs.length >= 2 && drugs.every((d) => d.trim().length > 0),
+    staleTime: 300000,
+  });
+}
+
+export function useCheckDrugFoodInteractions(drugs: string[], foods: string[]) {
+  const normalizedKey = normalizeInputsForQueryKey([...drugs, ...foods]);
+
+  return useQuery({
+    queryKey: ['drugFoodInteractions', normalizedKey],
+    queryFn: async () => {
+      return computeDrugFoodInteractions(drugs, foods);
+    },
+    enabled:
+      drugs.length > 0 &&
+      foods.length > 0 &&
+      drugs.every((d) => d.trim().length > 0) &&
+      foods.every((f) => f.trim().length > 0),
+    staleTime: 300000,
+  });
+}
+
+export function useCheckFoodFoodInteractions(foods: string[]) {
+  const normalizedKey = normalizeInputsForQueryKey(foods);
+
+  return useQuery({
+    queryKey: ['foodFoodInteractions', normalizedKey],
+    queryFn: async () => {
+      return computeFoodFoodInteractions(foods);
+    },
+    enabled: foods.length >= 2 && foods.every((f) => f.trim().length > 0),
+    staleTime: 300000,
   });
 }

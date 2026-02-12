@@ -19,6 +19,13 @@ export interface AdverseDrugReaction {
   'suspectedDrug' : string,
   'severity' : string,
 }
+export interface BulkDrugStoreUpdateResult {
+  'added' : bigint,
+  'errors' : Array<string>,
+  'duplicates' : bigint,
+  'totalAfterStore' : bigint,
+  'skippedEmpty' : bigint,
+}
 export interface CaseNarration {
   'status' : NarrationStatus,
   'content' : string,
@@ -324,6 +331,14 @@ export interface _SERVICE {
     undefined
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'bulkUpdateDrugDatabaseStore' : ActorMethod<
+    [Array<Drug>],
+    BulkDrugStoreUpdateResult
+  >,
+  'bulkUpdateDrugTableStore' : ActorMethod<
+    [Array<Drug>],
+    BulkDrugStoreUpdateResult
+  >,
   'checkDrugInteraction' : ActorMethod<
     [string, string],
     [] | [DrugInteraction]
@@ -337,19 +352,40 @@ export interface _SERVICE {
     { 'status' : string, 'error' : [] | [string] }
   >,
   'getADRsByPatient' : ActorMethod<[string], Array<AdverseDrugReaction>>,
+  'getAllDrugDatabaseStoreDrugs' : ActorMethod<[], Array<Drug>>,
+  'getAllDrugTableStoreDrugs' : ActorMethod<[], Array<Drug>>,
   'getAllDrugs' : ActorMethod<[], Array<Drug>>,
+  'getAllDrugsFromDatabase' : ActorMethod<[], Array<Drug>>,
   'getAllDrugsFromStore' : ActorMethod<[], Array<Drug>>,
   'getAllPatients' : ActorMethod<[], Array<Patient>>,
   'getApprovedDrugs' : ActorMethod<[], Array<Drug>>,
+  'getAuthoritativeDrugDatabase' : ActorMethod<[], Array<Drug>>,
+  'getAuthoritativeDrugDatabaseByStatus' : ActorMethod<
+    [DrugStatus],
+    Array<Drug>
+  >,
   'getBannedDrugs' : ActorMethod<[], Array<Drug>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCaseNarrationsByPatient' : ActorMethod<[string], Array<CaseNarration>>,
   'getCategorizedDrugs' : ActorMethod<[], CategorizedDrugs>,
   'getChatMessages' : ActorMethod<[], Array<ChatMessage>>,
+  'getDrugDatabaseStoreByStatus' : ActorMethod<[DrugStatus], Array<Drug>>,
   'getDrugSafetyAdvisory' : ActorMethod<
     [string, string, string, string],
     DrugSafetyAdvisory
+  >,
+  'getDrugTableLastRefreshTimestamp' : ActorMethod<[], [] | [Time]>,
+  'getDrugTableStoreByStatus' : ActorMethod<[DrugStatus], Array<Drug>>,
+  'getDrugTableVerificationReport' : ActorMethod<
+    [],
+    {
+      'lastVerificationTimestamp' : [] | [Time],
+      'bannedDrugs' : bigint,
+      'lastVerifiedDrugCount' : [] | [bigint],
+      'approvedDrugs' : bigint,
+      'totalDrugs' : bigint,
+    }
   >,
   'getExternalResources' : ActorMethod<[], Array<ExternalResource>>,
   'getFilteredDrugs' : ActorMethod<[[] | [DrugStatus]], Array<Drug>>,
@@ -372,6 +408,7 @@ export interface _SERVICE {
   'initializeAccessControl' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'refreshAndVerifyDrugTable' : ActorMethod<[], DrugVerificationResult>,
+  'refreshAuthoritativeAggregateDatabase' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'savePrescriberDetailsForPatient' : ActorMethod<
     [string, PrescriberDetails],

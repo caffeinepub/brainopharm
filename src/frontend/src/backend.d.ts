@@ -170,6 +170,13 @@ export interface Drug {
     category: string;
     safetyInfo: string;
 }
+export interface BulkDrugStoreUpdateResult {
+    added: bigint;
+    errors: Array<string>;
+    duplicates: bigint;
+    totalAfterStore: bigint;
+    skippedEmpty: bigint;
+}
 export interface DrugSafetyAdvisory {
     specialPopulations: SpecialPopulationsGuidance;
     overallRisk?: OverallRiskSummary;
@@ -310,6 +317,8 @@ export interface backendInterface {
     }>;
     addRestrictedDrugCategory(category: RestrictedDrugCategory): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    bulkUpdateDrugDatabaseStore(drugs: Array<Drug>): Promise<BulkDrugStoreUpdateResult>;
+    bulkUpdateDrugTableStore(drugs: Array<Drug>): Promise<BulkDrugStoreUpdateResult>;
     checkDrugInteraction(drug1: string, drug2: string): Promise<DrugInteraction | null>;
     checkFourDrugInteraction(input: FourDrugInteractionInput): Promise<FourDrugInteractionOutput>;
     deletePatient(patientId: string): Promise<{
@@ -317,17 +326,32 @@ export interface backendInterface {
         error?: string;
     }>;
     getADRsByPatient(patientId: string): Promise<Array<AdverseDrugReaction>>;
+    getAllDrugDatabaseStoreDrugs(): Promise<Array<Drug>>;
+    getAllDrugTableStoreDrugs(): Promise<Array<Drug>>;
     getAllDrugs(): Promise<Array<Drug>>;
+    getAllDrugsFromDatabase(): Promise<Array<Drug>>;
     getAllDrugsFromStore(): Promise<Array<Drug>>;
     getAllPatients(): Promise<Array<Patient>>;
     getApprovedDrugs(): Promise<Array<Drug>>;
+    getAuthoritativeDrugDatabase(): Promise<Array<Drug>>;
+    getAuthoritativeDrugDatabaseByStatus(status: DrugStatus): Promise<Array<Drug>>;
     getBannedDrugs(): Promise<Array<Drug>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCaseNarrationsByPatient(patientId: string): Promise<Array<CaseNarration>>;
     getCategorizedDrugs(): Promise<CategorizedDrugs>;
     getChatMessages(): Promise<Array<ChatMessage>>;
+    getDrugDatabaseStoreByStatus(status: DrugStatus): Promise<Array<Drug>>;
     getDrugSafetyAdvisory(drug1: string, drug2: string, drug3: string, drug4: string): Promise<DrugSafetyAdvisory>;
+    getDrugTableLastRefreshTimestamp(): Promise<Time | null>;
+    getDrugTableStoreByStatus(status: DrugStatus): Promise<Array<Drug>>;
+    getDrugTableVerificationReport(): Promise<{
+        lastVerificationTimestamp?: Time;
+        bannedDrugs: bigint;
+        lastVerifiedDrugCount?: bigint;
+        approvedDrugs: bigint;
+        totalDrugs: bigint;
+    }>;
     getExternalResources(): Promise<Array<ExternalResource>>;
     getFilteredDrugs(status: DrugStatus | null): Promise<Array<Drug>>;
     getLabResultsByPatient(patientId: string): Promise<Array<LabResults>>;
@@ -340,6 +364,7 @@ export interface backendInterface {
     initializeAccessControl(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     refreshAndVerifyDrugTable(): Promise<DrugVerificationResult>;
+    refreshAuthoritativeAggregateDatabase(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     savePrescriberDetailsForPatient(patientId: string, prescriberDetails: PrescriberDetails): Promise<void>;
     searchDrugs(searchQuery: string): Promise<Array<Drug>>;

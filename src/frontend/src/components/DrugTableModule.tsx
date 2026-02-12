@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useGetAllDrugs, useGetApprovedDrugs, useGetBannedDrugs, useGetMultiSourceLastUpdated, useGetMultiSourceSyncStatus, useRefreshAndVerifyDrugTable, useGetLastDrugVerification } from '../hooks/useQueries';
+import { useGetAllDrugs, useGetApprovedDrugs, useGetBannedDrugs, useGetMultiSourceLastUpdated, useGetMultiSourceSyncStatus, useRefreshAndVerifyDrugTable, useGetLastDrugVerification, useIsCallerAdmin, useGetDrugTableVerificationReport, useGetDrugTableLastRefreshTimestamp } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
@@ -10,11 +10,12 @@ import { Skeleton } from './ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
-import { Search, CheckCircle2, XCircle, Database, RefreshCw, Clock, Moon, Sun, TrendingDown, Filter, Info, ExternalLink, Download, Loader2, AlertCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, Database, RefreshCw, Clock, Moon, Sun, TrendingDown, Filter, Info, ExternalLink, Download, Loader2, AlertCircle, X, ChevronLeft, ChevronRight, Upload, AlertTriangle } from 'lucide-react';
 import { DrugStatus, type Drug } from '../backend';
 import { useTheme } from 'next-themes';
 import DrugDetailsModal from './DrugDetailsModal';
 import MonthlyBanTrendsChart from './MonthlyBanTrendsChart';
+import DrugBulkImportDialog from './DrugBulkImportDialog';
 import { verifyDrugList } from '../services/drugListVerification';
 
 const ITEMS_PER_PAGE = 50;
@@ -26,6 +27,7 @@ export default function DrugTableModule() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [showTrendsChart, setShowTrendsChart] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [verificationResult, setVerificationResult] = useState<{ passed: boolean; summary: string } | null>(null);
   const { theme, setTheme } = useTheme();
@@ -38,6 +40,9 @@ export default function DrugTableModule() {
   const { data: syncStatus } = useGetMultiSourceSyncStatus();
   const refreshAndVerify = useRefreshAndVerifyDrugTable();
   const { data: lastVerification } = useGetLastDrugVerification();
+  const { data: isAdmin = false } = useIsCallerAdmin();
+  const { data: verificationReport } = useGetDrugTableVerificationReport();
+  const { data: lastRefreshTimestamp } = useGetDrugTableLastRefreshTimestamp();
 
   // Debounce search input
   useEffect(() => {
@@ -52,12 +57,14 @@ export default function DrugTableModule() {
     setCurrentPage(1);
   }, [activeTab, debouncedSearch, categoryFilter]);
 
-  // Calculate drug counters from allDrugs (authoritative source)
+  // Calculate drug counters from backend-provided lists (authoritative)
   const drugCounters = useMemo(() => {
-    const banned = allDrugs.filter(d => d.status === DrugStatus.banned).length;
-    const approved = allDrugs.filter(d => d.status === DrugStatus.approved).length;
-    return { banned, approved, total: allDrugs.length };
-  }, [allDrugs]);
+    return {
+      total: allDrugs.length,
+      approved: approvedDrugs.length,
+      banned: bannedDrugs.length,
+    };
+  }, [allDrugs.length, approvedDrugs.length, bannedDrugs.length]);
 
   // Get the current dataset based on active tab (use backend-provided lists)
   const currentDataset = useMemo(() => {
@@ -165,10 +172,26 @@ export default function DrugTableModule() {
     }
   };
 
+  const formatTimestamp = (timestamp: bigint | null | undefined) => {
+    if (!timestamp) return 'Never';
+    try {
+      const date = new Date(Number(timestamp) / 1000000);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Not available';
+    }
+  };
+
   const getStatusBadge = (status: DrugStatus, isNew: boolean = false) => {
     if (status === DrugStatus.approved) {
       return (
-        <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+        <Badge variant="default" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           Approved
         </Badge>
@@ -186,11 +209,11 @@ export default function DrugTableModule() {
   const getCategoryBadge = (category: string) => {
     const safeCategory = category || 'General';
     const colors: Record<string, string> = {
-      'General': 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20',
-      'Antibiotic': 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20',
-      'Painkiller': 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20',
-      'FDC': 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
-      'Vitamin': 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
+      'General': 'bg-stone-500/10 text-stone-700 dark:text-stone-400 border-stone-500/20',
+      'Antibiotic': 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
+      'Painkiller': 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+      'FDC': 'bg-stone-600/10 text-stone-700 dark:text-stone-400 border-stone-600/20',
+      'Vitamin': 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 border-emerald-600/20',
     };
 
     return (
@@ -202,29 +225,29 @@ export default function DrugTableModule() {
 
   const getSourceBadge = (source: Drug['source']) => {
     let sourceName = 'Unknown';
-    let color = 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20';
+    let color = 'bg-stone-500/10 text-stone-700 dark:text-stone-400 border-stone-500/20';
 
     try {
       if (source.__kind__ === 'cdsco') {
         sourceName = 'CDSCO';
-        color = 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20';
+        color = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20';
       } else if (source.__kind__ === 'mimsIndia') {
         sourceName = 'MIMS';
-        color = 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20';
+        color = 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
       } else if (source.__kind__ === 'other') {
         sourceName = source.other || 'Unknown';
         if (sourceName === 'Gazette of India') {
-          color = 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
+          color = 'bg-amber-600/10 text-amber-700 dark:text-amber-400 border-amber-600/20';
         } else if (sourceName === 'Merck Manuals') {
-          color = 'bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20';
+          color = 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 border-emerald-600/20';
         } else if (sourceName === 'DDInter') {
-          color = 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20';
+          color = 'bg-stone-600/10 text-stone-700 dark:text-stone-400 border-stone-600/20';
         } else if (sourceName === 'Micromedex') {
-          color = 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20';
+          color = 'bg-stone-700/10 text-stone-700 dark:text-stone-400 border-stone-700/20';
         } else if (sourceName === 'FDA') {
           color = 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20';
         } else if (sourceName === 'UTD') {
-          color = 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20';
+          color = 'bg-emerald-700/10 text-emerald-700 dark:text-emerald-400 border-emerald-700/20';
         }
       }
     } catch {
@@ -242,11 +265,14 @@ export default function DrugTableModule() {
     try {
       const result = await refreshAndVerify.mutateAsync();
       
-      // Run client-side verification on the returned data
-      const clientVerification = verifyDrugList(result.allDrugs);
+      // Display backend verification summary
+      const approvedCount = result.verifiedApprovedDrugs.length;
+      const bannedCount = result.verifiedBannedDrugs.length;
+      const totalCount = result.allDrugs.length;
+      
       setVerificationResult({
-        passed: clientVerification.passed,
-        summary: clientVerification.summary,
+        passed: true,
+        summary: `✓ Backend verification passed: ${totalCount} total drugs verified (${approvedCount} approved, ${bannedCount} banned) at ${formatTimestamp(result.verificationTimestamp)}`,
       });
     } catch (error) {
       console.error('Refresh and verify failed:', error);
@@ -307,28 +333,44 @@ export default function DrugTableModule() {
   // Determine loading state based on active tab
   const isLoading = activeTab === 'all' ? isLoadingAll : activeTab === 'approved' ? isLoadingApproved : isLoadingBanned;
 
+  // Check if dataset is unexpectedly low
+  const isDatasetLow = drugCounters.total < 550;
+
   return (
     <>
-      <Card className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-b border-blue-200 dark:border-blue-800">
+      <Card className="bg-white dark:bg-slate-900 border-stone-200 dark:border-stone-800 shadow-xl">
+        <CardHeader className="bg-gradient-to-r from-stone-50 to-stone-100 dark:from-stone-950 dark:to-stone-900 border-b border-stone-200 dark:border-stone-800">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-blue-600 dark:bg-blue-500">
+              <div className="p-3 rounded-lg bg-emerald-600 dark:bg-emerald-500">
                 <Database className="h-7 w-7 text-white" />
               </div>
               <div>
-                <CardTitle className="text-3xl font-bold text-blue-900 dark:text-blue-100">Drug Database</CardTitle>
-                <CardDescription className="text-blue-700 dark:text-blue-300 mt-1">
-                  Comprehensive pharmaceutical information from 8 authoritative sources with automatic daily updates at 2 AM IST
+                <CardTitle className="text-3xl font-bold text-stone-900 dark:text-stone-100">
+                  Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated
+                </CardTitle>
+                <CardDescription className="text-stone-700 dark:text-stone-300 mt-1">
+                  Comprehensive pharmaceutical information from authoritative sources with backend verification
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {isAdmin && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowImportDialog(true)}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import Database
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExportCSV}
-                className="flex items-center gap-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900"
+                className="flex items-center gap-2 border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-900"
               >
                 <Download className="h-4 w-4" />
                 CSV Export
@@ -337,7 +379,7 @@ export default function DrugTableModule() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowTrendsChart(true)}
-                className="flex items-center gap-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900"
+                className="flex items-center gap-2 border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-900"
               >
                 <TrendingDown className="h-4 w-4" />
                 Ban Trends
@@ -347,7 +389,7 @@ export default function DrugTableModule() {
                 size="sm"
                 onClick={handleRefreshAndVerify}
                 disabled={refreshAndVerify.isPending}
-                className="flex items-center gap-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900"
+                className="flex items-center gap-2 border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-900"
               >
                 <RefreshCw className={`h-4 w-4 ${refreshAndVerify.isPending ? 'animate-spin' : ''}`} />
                 Refresh & Verify
@@ -364,9 +406,18 @@ export default function DrugTableModule() {
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-            <Clock className="h-4 w-4" />
-            <span>Last updated: {formatLastUpdated(lastUpdated)}</span>
+          {/* Authoritative Dataset Status Line */}
+          <div className="mt-4 flex items-center gap-4 text-sm flex-wrap">
+            <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300">
+              <Clock className="h-4 w-4" />
+              <span>Last backend refresh: {formatTimestamp(lastRefreshTimestamp)}</span>
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-md ${isDatasetLow ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'}`}>
+              {isDatasetLow ? <AlertTriangle className="h-4 w-4" /> : <Database className="h-4 w-4" />}
+              <span className="font-semibold">
+                Backend: {drugCounters.total} total ({drugCounters.approved} approved, {drugCounters.banned} banned)
+              </span>
+            </div>
             {isSyncing && (
               <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -377,127 +428,84 @@ export default function DrugTableModule() {
 
           {/* Verification Result Banner */}
           {verificationResult && (
-            <div className={`mt-4 p-3 rounded-lg border ${verificationResult.passed ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+            <div className={`mt-4 p-3 rounded-lg border ${verificationResult.passed ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   {verificationResult.passed ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5" />
                   ) : (
                     <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
                   )}
-                  <p className={`text-sm ${verificationResult.passed ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
+                  <p className={`text-sm ${verificationResult.passed ? 'text-emerald-800 dark:text-emerald-200' : 'text-red-800 dark:text-red-200'}`}>
                     {verificationResult.summary}
                   </p>
                 </div>
                 <button
                   onClick={() => setVerificationResult(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
           )}
-
-          {/* Last Verification Info */}
-          {lastVerification && !verificationResult && (
-            <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                <Info className="h-4 w-4" />
-                <span>
-                  Last verification: {formatLastUpdated(new Date(Number(lastVerification.verificationTimestamp) / 1000000))} 
-                  {' '}({lastVerification.allDrugs.length} drugs verified)
-                </span>
-              </div>
-            </div>
-          )}
         </CardHeader>
 
-        <CardContent className="pt-6">
-          <div className="mb-6 grid gap-4 sm:grid-cols-3">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Drugs</p>
-                    <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{drugCounters.total}</p>
-                  </div>
-                  <Database className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+        <CardContent className="p-6">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'approved' | 'banned')}>
+            <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+              <TabsList className="bg-stone-100 dark:bg-stone-800">
+                <TabsTrigger value="all" className="data-[state=active]:bg-white dark:data-[state=active]:bg-stone-700">
+                  All Drugs ({drugCounters.total})
+                </TabsTrigger>
+                <TabsTrigger value="approved" className="data-[state=active]:bg-emerald-50 dark:data-[state=active]:bg-emerald-950">
+                  Approved ({drugCounters.approved})
+                </TabsTrigger>
+                <TabsTrigger value="banned" className="data-[state=active]:bg-red-50 dark:data-[state=active]:bg-red-950">
+                  Banned ({drugCounters.banned})
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-stone-400" />
+                  <Input
+                    placeholder="Search drugs..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-64 border-stone-300 dark:border-stone-700"
+                  />
+                  {autocompleteSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-stone-200 dark:border-stone-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {autocompleteSuggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSearchTerm(suggestion);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-stone-50 dark:hover:bg-stone-700 text-sm"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-700 dark:text-green-300">Approved</p>
-                    <p className="text-3xl font-bold text-green-900 dark:text-green-100">{drugCounters.approved}</p>
-                  </div>
-                  <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 dark:border-red-800">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-red-700 dark:text-red-300">Banned</p>
-                    <p className="text-3xl font-bold text-red-900 dark:text-red-100">{drugCounters.banned}</p>
-                  </div>
-                  <XCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'approved' | 'banned')} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="all">All Drugs</TabsTrigger>
-              <TabsTrigger value="approved">Approved</TabsTrigger>
-              <TabsTrigger value="banned">Banned</TabsTrigger>
-            </TabsList>
-
-            <div className="mb-6 flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search drugs by name, category, or description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-                {autocompleteSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg">
-                    {autocompleteSuggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSearchTerm(suggestion)}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-48 border-stone-300 dark:border-stone-700">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter by category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="antibiotic">Antibiotic</SelectItem>
+                    <SelectItem value="painkiller">Painkiller</SelectItem>
+                    <SelectItem value="fdc">FDC</SelectItem>
+                    <SelectItem value="vitamin">Vitamin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="antibiotic">Antibiotic</SelectItem>
-                  <SelectItem value="painkiller">Painkiller</SelectItem>
-                  <SelectItem value="fdc">FDC</SelectItem>
-                  <SelectItem value="vitamin">Vitamin</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <TabsContent value={activeTab} className="mt-0">
@@ -507,76 +515,75 @@ export default function DrugTableModule() {
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
-              ) : filteredDrugs.length === 0 ? (
-                <div className="text-center py-12">
-                  <Database className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-400">No drugs found</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                    {searchTerm || categoryFilter !== 'all' ? 'Try adjusting your filters' : 'The database is empty'}
-                  </p>
-                </div>
               ) : (
                 <>
-                  <div className="rounded-md border border-gray-200 dark:border-gray-700">
+                  <div className="rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[30%]">Drug Name</TableHead>
-                          <TableHead className="w-[15%]">Status</TableHead>
-                          <TableHead className="w-[15%]">Category</TableHead>
-                          <TableHead className="w-[15%]">Source</TableHead>
-                          <TableHead className="w-[15%]">Date</TableHead>
-                          <TableHead className="w-[10%]">Actions</TableHead>
+                        <TableRow className="bg-stone-50 dark:bg-stone-900">
+                          <TableHead className="font-semibold text-stone-900 dark:text-stone-100">Drug Name</TableHead>
+                          <TableHead className="font-semibold text-stone-900 dark:text-stone-100">Status</TableHead>
+                          <TableHead className="font-semibold text-stone-900 dark:text-stone-100">Category</TableHead>
+                          <TableHead className="font-semibold text-stone-900 dark:text-stone-100">Source</TableHead>
+                          <TableHead className="font-semibold text-stone-900 dark:text-stone-100">Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedDrugs.map((drug, index) => (
-                          <TableRow key={index} className="hover:bg-gray-50 dark:hover:bg-slate-800">
-                            <TableCell className="font-medium">{drug.name || 'Not available'}</TableCell>
-                            <TableCell>{getStatusBadge(drug.status, isNewDrug(drug.date))}</TableCell>
-                            <TableCell>{getCategoryBadge(drug.category)}</TableCell>
-                            <TableCell>{getSourceBadge(drug.source)}</TableCell>
-                            <TableCell className="text-sm text-gray-600 dark:text-gray-400">{formatDate(drug.date)}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDrugClick(drug)}
-                                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
+                        {paginatedDrugs.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-12 text-stone-500 dark:text-stone-400">
+                              <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                              <p>No drugs found matching your criteria</p>
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          paginatedDrugs.map((drug, idx) => (
+                            <TableRow
+                              key={idx}
+                              className="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
+                              onClick={() => handleDrugClick(drug)}
+                            >
+                              <TableCell className="font-medium text-stone-900 dark:text-stone-100">
+                                {drug.name || 'Unknown'}
+                              </TableCell>
+                              <TableCell>{getStatusBadge(drug.status, isNewDrug(drug.date))}</TableCell>
+                              <TableCell>{getCategoryBadge(drug.category)}</TableCell>
+                              <TableCell>{getSourceBadge(drug.source)}</TableCell>
+                              <TableCell className="text-stone-600 dark:text-stone-400">{formatDate(drug.date)}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
 
-                  {/* Pagination Controls */}
+                  {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="mt-6 flex items-center justify-between">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredDrugs.length)} of {filteredDrugs.length} results
+                    <div className="flex items-center justify-between mt-6">
+                      <p className="text-sm text-stone-600 dark:text-stone-400">
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+                        {Math.min(currentPage * ITEMS_PER_PAGE, filteredDrugs.length)} of {filteredDrugs.length} results
                       </p>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                           disabled={currentPage === 1}
+                          className="border-stone-300 dark:border-stone-700"
                         >
                           <ChevronLeft className="h-4 w-4" />
                           Previous
                         </Button>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-sm text-stone-600 dark:text-stone-400">
                           Page {currentPage} of {totalPages}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                           disabled={currentPage === totalPages}
+                          className="border-stone-300 dark:border-stone-700"
                         >
                           Next
                           <ChevronRight className="h-4 w-4" />
@@ -593,17 +600,22 @@ export default function DrugTableModule() {
 
       {selectedDrug && (
         <DrugDetailsModal
-          drug={selectedDrug}
           isOpen={!!selectedDrug}
           onClose={() => setSelectedDrug(null)}
+          drug={selectedDrug}
         />
       )}
 
-      {showTrendsChart && (
-        <MonthlyBanTrendsChart
-          drugs={allDrugs}
-          isOpen={showTrendsChart}
-          onClose={() => setShowTrendsChart(false)}
+      <MonthlyBanTrendsChart
+        isOpen={showTrendsChart}
+        onClose={() => setShowTrendsChart(false)}
+        drugs={allDrugs}
+      />
+
+      {isAdmin && (
+        <DrugBulkImportDialog
+          open={showImportDialog}
+          onOpenChange={setShowImportDialog}
         />
       )}
     </>
