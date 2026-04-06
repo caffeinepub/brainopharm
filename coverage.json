@@ -1,0 +1,83 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-12T21:20:09.606Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 5,
+    "implemented": 3,
+    "items": [
+      {
+        "id": "REQ-1",
+        "summary": "Implement automatic population of the backend authoritative drug database so that on first run (and after upgrade, if the store is empty) the canister contains 500+ drug entries without requiring a manual import.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Ensure the expanded canonical drug dataset (550+ entries across categories) is what populates the authoritative drug list shown in the Drug Database UI, matching the existing project goal of an expanded dataset.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/DrugTableModule.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/DrugTableModule.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Make the existing “Refresh & Verify” workflow reliable by ensuring backend methods required by the frontend hooks exist and return consistent data: getAllDrugs, getApprovedDrugs, getBannedDrugs, getCategorizedDrugs, refreshAndVerifyDrugTable, getLastDrugVerification, getDrugTableVerificationReport, and getDrugTableLastRefreshTimestamp.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Add/adjust the Drug Database UI header text to match the project requirement: display the header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” prominently in the drug table module.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DrugTableModule.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/DrugTableModule.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Apply a coherent, professional academic visual theme across the Drug Database module (cards, table header, badges, buttons, and banners) using a consistent neutral palette (avoid introducing blue/purple as primary brand colors unless already required) and consistent typography hierarchy.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/DrugTableModule.tsx",
+          "frontend/src/components/MonthlyBanTrendsChart.tsx",
+          "frontend/src/index.css"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/DrugTableModule.tsx",
+          "frontend/src/components/MonthlyBanTrendsChart.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/components/DrugInteractionsModule.tsx",
+    "frontend/src/components/DrugTableModule.tsx",
+    "frontend/src/components/MonthlyBanTrendsChart.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

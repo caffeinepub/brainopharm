@@ -1,0 +1,123 @@
+{
+  "kind": "build_request",
+  "title": "Automatically preload and refresh the authoritative drug database (500+ entries)",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Implement automatic population of the backend authoritative drug database so that on first run (and after upgrade, if the store is empty) the canister contains 500+ drug entries without requiring a manual import.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "recent-11"
+        ],
+        "quotes": [
+          "ADD DRUGS AUTOMATICALLY"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Calling the existing frontend query hooks (useGetAllDrugs/useGetApprovedDrugs/useGetBannedDrugs) returns non-empty results on a fresh deployment without any manual admin action.",
+        "On a fresh deployment, actor.getAllDrugs() returns at least 500 drugs.",
+        "The auto-population logic does not overwrite existing drug keys if the database is already populated."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Ensure the expanded canonical drug dataset (550+ entries across categories) is what populates the authoritative drug list shown in the Drug Database UI, matching the existing project goal of an expanded dataset.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "recent-11"
+        ],
+        "quotes": [
+          "ADD DRUGS AUTOMATICALLY"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The dataset used to seed the backend contains more than 550 total approved+banned entries spanning multiple categories (e.g., antibiotics, painkillers, FDCs, vitamins, other).",
+        "The Drug Database UI counts (total/approved/banned) match the backend authoritative dataset after seeding and after Refresh & Verify."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Make the existing “Refresh & Verify” workflow reliable by ensuring backend methods required by the frontend hooks exist and return consistent data: getAllDrugs, getApprovedDrugs, getBannedDrugs, getCategorizedDrugs, refreshAndVerifyDrugTable, getLastDrugVerification, getDrugTableVerificationReport, and getDrugTableLastRefreshTimestamp.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "recent-17"
+        ],
+        "quotes": [
+          "YES"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The Drug Database UI loads without runtime errors related to missing canister methods.",
+        "Clicking “Refresh & Verify” in the Drug Database UI completes successfully and updates the ‘Last backend refresh’ timestamp.",
+        "After Refresh & Verify completes, React Query invalidations result in updated lists being rendered (no stale counts)."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add/adjust the Drug Database UI header text to match the project requirement: display the header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” prominently in the drug table module.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "project_state"
+        ],
+        "quotes": [
+          "Responsive professional UI for academic use with filters (Status, Year, Category), drug/ingredient search, sortable columns, and header text \"Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated\""
+        ]
+      },
+      "acceptanceCriteria": [
+        "The specified header text is visible at the top of the Drug Database module on both desktop and mobile widths."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Apply a coherent, professional academic visual theme across the Drug Database module (cards, table header, badges, buttons, and banners) using a consistent neutral palette (avoid introducing blue/purple as primary brand colors unless already required) and consistent typography hierarchy.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "recent-17"
+        ],
+        "quotes": [
+          "YES"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Drug Database module styling appears consistent across tabs (All/Approved/Banned) and in dark/light themes.",
+        "No new primary brand reliance on blue/purple gradients is introduced as the dominant style in this module (existing elements may be adjusted to match the new theme)."
+      ]
+    }
+  ],
+  "constraints": [
+    "Backend must remain a single Motoko actor in backend/main.mo; do not introduce additional backend services.",
+    "Only create/modify backend/migration.mo if needed for upgrading existing stable state; follow the existing conditional migration policy.",
+    "Do not edit files under frontend/src/components/ui or any frontend immutablePaths listed in SYSTEM_CONTEXT; compose components instead.",
+    "Use English for all user-facing text."
+  ],
+  "nonGoals": [
+    "Implementing real-time updates (WebSockets/push notifications).",
+    "Integrating third-party authentication providers beyond Internet Identity.",
+    "Deploying to external cloud providers or using external databases.",
+    "Guaranteeing live scraping/parsing of CDSCO PDFs or websites beyond the scope of a deterministic built-in seed + manual/admin import (unless explicitly requested later with exact URLs and parsing rules)."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [
+      "Automatically seed the authoritative drug database with 500+ (ideally 550+) entries so the app works immediately without manual import."
+    ],
+    "goalsToRemove": [],
+    "preferencesToAdd": [
+      "Use English for user-facing UI text."
+    ],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
+  }
+}

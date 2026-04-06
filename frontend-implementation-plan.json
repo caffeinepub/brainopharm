@@ -1,0 +1,66 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Drug Database UI: authoritative dataset alignment, header text, and academic neutral theme",
+  "requirements": [
+    {
+      "id": "REQ-2",
+      "summary": "Ensure the Drug Database UI reflects the expanded authoritative dataset (550+) and stays in sync after Refresh & Verify.",
+      "acceptanceCriteria": [
+        "The dataset used to seed the backend contains more than 550 total approved+banned entries spanning multiple categories (e.g., antibiotics, painkillers, FDCs, vitamins, other).",
+        "The Drug Database UI counts (total/approved/banned) match the backend authoritative dataset after seeding and after Refresh & Verify."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Tighten React Query configuration for authoritative drug queries (useGetAllDrugs/useGetApprovedDrugs/useGetBannedDrugs/useGetCategorizedDrugs) to reliably refetch on mount and avoid stale counts after refresh; ensure Refresh & Verify mutation continues to invalidate all relevant drug query keys used by the Drug Database UI."
+        },
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Add a small, prominent authoritative-dataset status line in the Drug Database header area that surfaces backend-derived totals (total/approved/banned) and highlights when totals are unexpectedly low (<550) so mismatches are visible immediately after seeding and after Refresh & Verify."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Update the Drug Database module header to the required academic title string.",
+      "acceptanceCriteria": [
+        "The specified header text is visible at the top of the Drug Database module on both desktop and mobile widths."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Replace the current Drug Database module title with the exact required header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” and ensure it is presented prominently and responsively within the module header."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Apply a consistent professional academic neutral theme across the Drug Database module (cards, tables, badges, buttons, banners) without introducing blue/purple as dominant primary styling.",
+      "acceptanceCriteria": [
+        "Drug Database module styling appears consistent across tabs (All/Approved/Banned) and in dark/light themes.",
+        "No new primary brand reliance on blue/purple gradients is introduced as the dominant style in this module (existing elements may be adjusted to match the new theme)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/DrugTableModule.tsx",
+          "operation": "modify",
+          "description": "Refactor module-level styling to a neutral academic palette (stone/emerald/amber/red) by updating Card, header, table header, badges (status/category/source), buttons, and banners to remove dominant blue/purple gradients and ensure consistent typography hierarchy across tabs."
+        },
+        {
+          "path": "frontend/src/components/MonthlyBanTrendsChart.tsx",
+          "operation": "modify",
+          "description": "Align the Ban Trends dialog styling with the same neutral academic theme (backgrounds, borders, headings, and summary cards) so it visually matches the Drug Database module in both light/dark modes without relying on blue/purple as the primary accent."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "If needed to support consistent module styling, adjust or add minimal theme tokens/utility conventions (using existing Tailwind + CSS variable approach) to reinforce neutral academic colors and typography hierarchy without introducing new global stylesheet entry points."
+        }
+      ]
+    }
+  ]
+}

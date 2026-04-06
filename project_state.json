@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Build a professional academic web app \"CDSCO India Drug Status 2026\" for pharmacovigilance research: a searchable/filterable drug status database (approved/banned) with 500+ preloaded entries sourced from CDSCO lists/PDFs, auto-update checks, admin import/edit tools, CSV export, and live deployment with official reference links.",
+  "architectural_notes": [
+    "Primary data sources include CDSCO PDFs (banned FDC lists) and CDSCO web pages/lists for approved new drugs (2024–2025).",
+    "Auto-update requires a scheduled weekly fetch/check of cdsco.gov.in sources and a stored \"Last Updated\" timestamp.",
+    "Support bulk ingestion pipelines for PDFs/CSV plus manual admin CRUD, with an export pipeline for full-database CSV downloads."
+  ],
+  "known_issues": [
+    "Repeated build attempts failed to implement the full requested app; may require simplifying scope or staged implementation."
+  ],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-ensure-the-expanded-canonical-drug-dataset-550-entries-across-categories-is-what-populates-the-authoritative-drug-list-shown-in-the-drug-database-ui-matching-the-existing-project-goal-of-an-expanded-dataset",
+      "title": "Ensure the expanded canonical drug dataset (550+ entries across categories) is what populates the authoritative drug list shown in the Drug Database UI, matching the existing project goal of an expanded dataset.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-adjust-the-drug-database-ui-header-text-to-match-the-project-requirement-display-the-header-text-complete-cdsco-drug-database-500-drugs-auto-updated-prominently-in-the-drug-table-module",
+      "title": "Add/adjust the Drug Database UI header text to match the project requirement: display the header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” prominently in the drug table module.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-coherent-professional-academic-visual-theme-across-the-drug-database-module-cards-table-header-badges-buttons-and-banners-using-a-consistent-neutral-palette-avoid-introducing-blue-purple-as-primary-brand-colors-unless-already-required-and-consistent-typography-hierarchy",
+      "title": "Apply a coherent, professional academic visual theme across the Drug Database module (cards, table header, badges, buttons, and banners) using a consistent neutral palette (avoid introducing blue/purple as primary brand colors unless already required) and consistent typography hierarchy.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Create interactive searchable/filterable drug table with EXACT columns: Drug Name, Status (Approved/Banned), Uses/Indications, Reason/Justification, Notification Date, Source/Reference, Last Updated",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Populate database immediately with 500+ drugs including ~444 banned FDCs from CDSCO banneddrugs.pdf and 100+ approved new drugs from CDSCO 2024–2025 lists (include provided sample rows)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Implement auto-update system: weekly check cdsco.gov.in for new approvals/bans, maintain Last Updated timestamp (show Feb 12, 2026), and provide \"Check CDSCO Updates\" button linking to official lists",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Add CSV Export button to download complete database",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Responsive professional UI for academic use with filters (Status, Year, Category), drug/ingredient search, sortable columns, and header text \"Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated\"",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Admin features: add/edit entries manually, upload CSV updates, and bulk import from CDSCO PDFs",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Deploy live immediately with shareable URL and footer links to CDSCO approved new drugs page and banned drugs page",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Implement automatic population of the backend authoritative drug database so that on first run (and after upgrade, if the store is empty) the canister contains 500+ drug entries without requiring a manual import.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Make the existing “Refresh & Verify” workflow reliable by ensuring backend methods required by the frontend hooks exist and return consistent data: getAllDrugs, getApprovedDrugs, getBannedDrugs, getCategorizedDrugs, refreshAndVerifyDrugTable, getLastDrugVerification, getDrugTableVerificationReport, and getDrugTableLastRefreshTimestamp.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "CDSCO India Drug Status 2026",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

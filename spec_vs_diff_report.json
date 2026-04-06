@@ -1,0 +1,89 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-12T21:20:09.602Z",
+  "summary": "Diff adds a new backend/migration.mo with a built-in authoritativeDrugDatabase seed array (truncated, appears small in excerpt), modifies backend/main.mo to wire migration, and makes several frontend changes around React Query refetching and UI styling. However, the diff summary does not provide clear evidence that the backend now auto-populates 500+/550+ drugs on first run/empty-store upgrade, nor that all required backend canister methods for “Refresh & Verify” are implemented. The exact required Drug Database header text also is not evidenced in the shown DrugTableModule excerpt. Several unrelated features (drug interaction database UI, ban trends chart, blue/gradient footer theme) appear added/modified without being requested in this BuildRequest.",
+  "missing_requirements": [
+    {
+      "id": "REQ-1",
+      "requirement": "Automatic population of the authoritative drug database on first run (and after upgrade if empty) with at least 500 entries, without overwriting existing keys if already populated.",
+      "reason": "The diff shows a seed array in backend/migration.mo, but the excerpt is truncated and only shows a handful of entries; there is no explicit evidence in the shown backend/main.mo excerpt of first-run/empty-store detection and seeding behavior, nor evidence that it guarantees >=500 drugs or preserves existing keys.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Use an expanded canonical dataset of >550 total approved+banned entries across multiple categories to seed the backend authoritative list, and ensure UI counts match backend after seeding and after Refresh & Verify.",
+      "reason": "backend/migration.mo includes an authoritativeDrugDatabase list, but the diff is truncated and does not evidence that it contains >550 entries across categories. No clear evidence is provided that UI counts are validated/matched against the canonical dataset post-seed and post-refresh beyond using backend-provided list lengths.",
+      "evidence": [
+        "backend/migration.mo",
+        "frontend/src/components/DrugTableModule.tsx"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Ensure backend methods required by frontend exist and are consistent: getAllDrugs, getApprovedDrugs, getBannedDrugs, getCategorizedDrugs, refreshAndVerifyDrugTable, getLastDrugVerification, getDrugTableVerificationReport, getDrugTableLastRefreshTimestamp.",
+      "reason": "The frontend imports/uses hooks for these methods, but the backend diff excerpt for backend/main.mo does not show implementations of these canister methods. The diff summary does not explicitly confirm these methods exist/return consistent data, or that refresh updates the last refresh timestamp.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/components/DrugTableModule.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Display the header text “Complete CDSCO Drug Database | 500+ Drugs | Auto-Updated” prominently at the top of the Drug Database module.",
+      "reason": "The shown portion of frontend/src/components/DrugTableModule.tsx does not include this exact header text, and no other provided diff excerpt evidences that this string is rendered.",
+      "evidence": [
+        "frontend/src/components/DrugTableModule.tsx"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Apply a coherent, professional academic visual theme across the Drug Database module using a consistent neutral palette, avoiding introducing blue/purple as dominant primary styling.",
+      "reason": "While some module styling uses neutral 'stone' classes, the diff summary indicates a 'professional white/blue pharmaceutical theme with gradient background' applied to the footer, which conflicts with the request to avoid new dominant blue/purple reliance (and the diff does not clearly demonstrate a comprehensive, consistent theme applied specifically across the Drug Database module cards/table header/badges/buttons/banners).",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Added/expanded Drug-Drug Interaction Database UI and related local interaction checking services/hooks (not part of the requested drug database preload/refresh work).",
+      "reason": "The BuildRequest focuses on authoritative drug database seeding, refresh/verify reliability, and Drug Database UI header/theme. The diff includes substantial interaction-related UI and hook/service work not requested.",
+      "evidence": [
+        "frontend/src/components/DrugInteractionsModule.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "Monthly Ban Trends chart/modal component and associated UI wiring (feature expansion beyond requested items).",
+      "reason": "Not requested by REQ-1..REQ-5; this is additional analytics UI work.",
+      "evidence": [
+        "frontend/src/components/MonthlyBanTrendsChart.tsx",
+        "frontend/src/components/DrugTableModule.tsx"
+      ]
+    },
+    {
+      "description": "Blue/gradient ‘pharmaceutical theme’ styling changes in the application footer.",
+      "reason": "REQ-5 explicitly asks to avoid introducing blue/purple as dominant styling (unless already required) and is scoped to the Drug Database module; the diff summary calls out a white/blue gradient footer theme, which is not requested and may conflict with the palette constraint.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.62,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/DrugInteractionsModule.tsx",
+    "frontend/src/components/DrugTableModule.tsx",
+    "frontend/src/components/MonthlyBanTrendsChart.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "project_state.json"
+  ]
+}
